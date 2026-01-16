@@ -71,9 +71,10 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 
 1. WHEN ユーザーが検索クエリを入力する THEN THE System SHALL クエリに一致するページタイトルを持つノードをハイライトする
 2. WHEN 検索結果が見つかる THEN THE Graph_Visualizer SHALL 最初の一致するノードにビューを中央揃えする
-3. WHEN ユーザーがフィルタ条件を設定する THEN THE System SHALL 条件に一致しないノードとエッジを非表示にする
-4. WHERE データベースフィルタが適用される THEN THE System SHALL 指定されたデータベースのページのみを表示する
-5. WHEN フィルタがクリアされる THEN THE System SHALL すべてのノードとエッジを再表示する
+3. WHEN アプリケーションが起動する THEN THE System SHALL デフォルトですべてのデータベースのページとリレーションを表示する
+4. WHEN ユーザーがデータベースを選択して非表示にする THEN THE System SHALL そのデータベースに属するノードとそれに接続されたエッジを非表示にする
+5. WHEN 複数のデータベースが非表示に設定される THEN THE System SHALL すべての非表示データベースのノードとエッジを非表示にする
+6. WHEN ユーザーが非表示設定をクリアする THEN THE System SHALL すべてのノードとエッジを再表示する
 
 ### 要件6: データの永続化
 
