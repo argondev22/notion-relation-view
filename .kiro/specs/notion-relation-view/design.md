@@ -335,7 +335,7 @@ interface AuthService {
 
 **セキュリティ**:
 
-- パスワードはbcryptでハッシュ化
+- パスワードはbcryptなどの強力なパスワードハッシュアルゴリズムでハッシュ化
 - セッショントークンはJWT（JSON Web Token）
 - NotionトークンはAES-256で暗号化
 - HTTPOnly Cookieでセッション管理
@@ -839,7 +839,7 @@ interface View {
 - **データベース**: PostgreSQL
 - **ORM**: SQLAlchemy
 - **認証**: JWT（JSON Web Token）- PyJWT
-- **暗号化**: cryptography
+- **暗号化**: cryptography（AES-256-GCM によるトークン暗号化、および PBKDF2-HMAC-SHA256 を用いた鍵導出を使用）
 - **キャッシュ**: Redis（オプション）
 - **テスト**: pytest + hypothesis
 - **ホスティング**: Railway、Render、または AWS
