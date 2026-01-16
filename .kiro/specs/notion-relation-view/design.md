@@ -335,9 +335,9 @@ interface AuthService {
 
 **セキュリティ**:
 
-- パスワードはbcryptなどの強力なパスワードハッシュアルゴリズムでハッシュ化
+- パスワードはbcryptでハッシュ化（ソルト付き）
 - セッショントークンはJWT（JSON Web Token）
-- NotionトークンはAES-256で暗号化
+- NotionトークンはAES-256-GCMで暗号化し、鍵導出にはPBKDF2-HMAC-SHA256を使用
 - HTTPOnly Cookieでセッション管理
 
 #### 5. Database Service
@@ -890,7 +890,7 @@ CREATE TABLE cached_graph_data (
 
 ### トークン管理
 
-- Notion APIトークンはAES-256で暗号化してデータベースに保存
+- Notion APIトークンは AES-256-GCM によって暗号化し、PBKDF2-HMAC-SHA256 による鍵導出を用いた鍵でデータベースに保存
 - 暗号化キーは環境変数で管理し、コードに含めない
 - トークンはフロントエンドに送信せず、バックエンドでのみ使用
 
