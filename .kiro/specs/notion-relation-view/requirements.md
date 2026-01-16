@@ -116,4 +116,4 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 1. WHEN グラフに100以上のノードが含まれる THEN THE Graph_Visualizer SHALL 60FPSでレンダリングを維持する
 2. WHEN ユーザーがズームまたはパンする THEN THE System SHALL 200ミリ秒以内に応答する
 3. WHEN 大量のデータを処理する THEN THE System SHALL 仮想化またはレベル・オブ・ディテール技術を使用してパフォーマンスを最適化する
-4. WHEN データ取得が実行される THEN THE Notion_API_Client SHALL リクエストをバッチ処理してAPI呼び出しを最小化す��
+4. WHEN データ取得が実行される THEN THE Notion_API_Client SHALL リクエストをバッチ処理してAPI呼び出しを最小化する
