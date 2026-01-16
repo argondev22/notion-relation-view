@@ -1,0 +1,9 @@
+{
+  "default": true,
+  "MD013": false, // Disable line length limit
+  "MD033": false, // Allow HTML tags
+  "MD041": false, // Allow non-heading first line
+  "MD034": false, // Allow bare URLs
+  "MD024": false, // Allow duplicate headings
+  "MD060": false // Disable table style check
+}
