@@ -71,23 +71,29 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 
 #### 受け入れ基準
 
-1. WHEN ユーザーが検索クエリを入力する THEN THE System SHALL クエリに一致するページタイトルを持つノードをハイライトする
-2. WHEN 検索結果が見つかる THEN THE Graph_Visualizer SHALL 最初の一致するノードにビューを中央揃えする
-3. WHEN アプリケーションが起動する THEN THE System SHALL デフォルトですべてのデータベースのページとリレーションを表示する
-4. WHEN ユーザーがデータベースを選択して非表示にする THEN THE System SHALL そのデータベースに属するノードとそれに接続されたエッジを非表示にする
-5. WHEN 複数のデータベースが非表示に設定される THEN THE System SHALL すべての非表示データベースのノードとエッジを非表示にする
-6. WHEN ユーザーが非表示設定をクリアする THEN THE System SHALL すべてのノードとエッジを再表示する
+1. WHEN アプリケーションが起動する THEN THE System SHALL デフォルトで空のグラフを表示する
+2. WHEN ユーザーがデータベースを選択して表示する THEN THE System SHALL そのデータベースに属するノードとそれらに接続されたエッジを表示する
+3. WHEN 複数のデータベースが選択される THEN THE System SHALL すべての選択されたデータベースのノードとエッジを表示する
+4. WHEN ユーザーが検索クエリを入力する THEN THE System SHALL クエリに一致するページタイトルを持つノードをハイライトする
+5. WHEN 検索結果が見つかる THEN THE Graph_Visualizer SHALL 最初の一致するノードにビューを中央揃えする
 
-### 要件6: データの永続化
+### 要件6: ビュー管理とデータ永続化
 
-**ユーザーストーリー:** ユーザーとして、APIトークンとビュー設定を保存したい。そうすることで、次回起動時に再入力する必要がない。
+**ユーザーストーリー:** ユーザーとして、複数のビュー設定を保存・管理したい。そうすることで、異なる目的に応じてグラフの表示を切り替えられる。
 
 #### 受け入れ基準
 
-1. WHEN ユーザーがAPIトークンを入力する THEN THE System SHALL トークンを安全にローカルストレージに保存する
+1. WHEN ユーザーがAPIトークンを入力する THEN THE System SHALL トークンを安全にサーバーに保存する
 2. WHEN アプリケーションが起動する THEN THE System SHALL 保存されたAPIトークンを読み込み、自動的に接続を試みる
-3. WHEN ユーザーがビュー設定を変更する THEN THE System SHALL 設定（ズームレベル、パン位置）をローカルストレージに保存する
-4. WHEN アプリケーションが再起動される THEN THE System SHALL 前回のビュー設定を復元する
+3. WHEN ユーザーがビュー設定を作成する THEN THE System SHALL ビュー名、選択されたデータベース、ズームレベル、パン位置を保存し、一意のビューIDを生成する
+4. WHEN ビュー設定が作成される THEN THE System SHALL そのビュー専用のURL（例: /view/{viewId}）を生成する
+5. WHEN ユーザーがビュー専用URLにアクセスする THEN THE System SHALL そのビュー設定を読み込み、グラフを表示する
+6. WHEN ユーザーが複数のビュー設定を作成する THEN THE System SHALL すべてのビュー設定とそれぞれのURLをリスト表示する
+7. WHEN ユーザーがビュー設定を選択する THEN THE System SHALL そのビュー設定を読み込み、グラフを更新する
+8. WHEN ユーザーがビュー設定を更新する THEN THE System SHALL 変更を保存し、次回選択時に反映する
+9. WHEN ユーザーがビュー設定を削除する THEN THE System SHALL そのビュー設定とURLをリストから削除する
+10. WHEN ユーザーがビューURLをNotionに埋め込む THEN THE System SHALL そのビューの設定でグラフを表示する
+11. WHEN アプリケーションが再起動される THEN THE System SHALL 前回選択していたビュー設定を復元する
 
 ### 要件7: エラーハンドリングとユーザーフィードバック
 
