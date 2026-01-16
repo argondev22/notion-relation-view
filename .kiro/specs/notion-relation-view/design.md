@@ -42,11 +42,13 @@ graph TB
 ### レイヤー構成
 
 #### フロントエンド
+
 1. **UIレイヤー**: ユーザーインターフェース、イベントハンドリング、状態管理
 2. **Graph Visualizerレイヤー**: グラフのレンダリング、レイアウト計算、インタラクション処理
 3. **API Clientレイヤー**: バックエンドAPIとの通信
 
 #### バックエンド
+
 1. **API Gatewayレイヤー**: フロントエンドからのリクエストを受け付け、認証・認可を行う
 2. **Notion API Clientレイヤー**: Notion APIとの通信、データ変換、エラーハンドリング
 3. **Cacheレイヤー**: データキャッシュ、レート制限管理
@@ -66,28 +68,45 @@ graph TB
 ```typescript
 interface FrontendAPIClient {
   // ユーザー登録
-  register(email: string, password: string): Promise<AuthResponse>
+  register(email: string, password: string): Promise<AuthResponse>;
 
   // ユーザーログイン
-  login(email: string, password: string): Promise<AuthResponse>
+  login(email: string, password: string): Promise<AuthResponse>;
 
   // ユーザーログアウト
-  logout(): Promise<void>
+  logout(): Promise<void>;
 
   // Notion APIトークンを保存
-  saveNotionToken(token: string): Promise<void>
+  saveNotionToken(token: string): Promise<void>;
 
-  // グラフデータを取得
-  getGraphData(): Promise<GraphData>
+  // グラフデータを取得（全データベース）
+  getGraphData(): Promise<GraphData>;
 
   // データベース一覧を取得
-  getDatabases(): Promise<Database[]>
+  getDatabases(): Promise<Database[]>;
 
-  // ビュー設定を保存
-  saveViewSettings(settings: ViewSettings): Promise<void>
+  // ビュー設定を作成
+  createView(name: string, databaseIds: string[], settings: ViewSettings): Promise<View>;
 
-  // ビュー設定を取得
-  getViewSettings(): Promise<ViewSettings>
+  // ビュー設定一覧を取得
+  getViews(): Promise<View[]>;
+
+  // 特定のビュー設定を取得
+  getView(viewId: string): Promise<View>;
+
+  // ビュー設定を更新
+  updateView(
+    viewId: string,
+    name: string,
+    databaseIds: string[],
+    settings: ViewSettings
+  ): Promise<View>;
+
+  // ビュー設定を削除
+  deleteView(viewId: string): Promise<void>;
+
+  // ビュー設定に基づくグラフデータを取得
+  getViewGraphData(viewId: string): Promise<GraphData>;
 }
 ```
 
@@ -100,32 +119,33 @@ interface FrontendAPIClient {
 ```typescript
 interface GraphVisualizer {
   // グラフデータを初期化し、レイアウトを計算
-  initialize(nodes: Node[], edges: Edge[]): void
+  initialize(nodes: Node[], edges: Edge[]): void;
 
   // グラフを描画
-  render(): void
+  render(): void;
 
   // ノードの位置を更新
-  updateNodePosition(nodeId: string, x: number, y: number): void
+  updateNodePosition(nodeId: string, x: number, y: number): void;
 
   // ビューをパン
-  pan(deltaX: number, deltaY: number): void
+  pan(deltaX: number, deltaY: number): void;
 
   // ズームレベルを設定
-  zoom(level: number): void
+  zoom(level: number): void;
 
   // ノードをハイライト
-  highlightNodes(nodeIds: string[]): void
+  highlightNodes(nodeIds: string[]): void;
 
   // 特定のノードにビューを中央揃え
-  centerOnNode(nodeId: string): void
+  centerOnNode(nodeId: string): void;
 
   // ノードとエッジの表示/非表示を切り替え
-  setVisibility(nodeIds: string[], visible: boolean): void
+  setVisibility(nodeIds: string[], visible: boolean): void;
 }
 ```
 
 **レイアウトアルゴリズム**:
+
 - Force-directed layout（力指向グラフ）を使用
 - ノード間の反発力とエッジの引力でバランスを取る
 - 大規模グラフの場合は階層的レイアウトも検討
@@ -139,38 +159,54 @@ interface GraphVisualizer {
 ```typescript
 interface UIController {
   // アプリケーションを初期化
-  initialize(): Promise<void>
+  initialize(): Promise<void>;
 
   // ユーザー登録を処理
-  handleRegister(email: string, password: string): Promise<void>
+  handleRegister(email: string, password: string): Promise<void>;
 
   // ユーザーログインを処理
-  handleLogin(email: string, password: string): Promise<void>
+  handleLogin(email: string, password: string): Promise<void>;
 
   // Notion APIトークン入力を処理
-  handleTokenInput(token: string): Promise<void>
+  handleTokenInput(token: string): Promise<void>;
 
   // データ取得を開始
-  fetchData(): Promise<void>
+  fetchData(): Promise<void>;
+
+  // ビュー設定を作成
+  createView(name: string, databaseIds: string[]): Promise<void>;
+
+  // ビュー設定を選択
+  selectView(viewId: string): Promise<void>;
+
+  // ビュー設定を更新
+  updateView(viewId: string, name: string, databaseIds: string[]): Promise<void>;
+
+  // ビュー設定を削除
+  deleteView(viewId: string): Promise<void>;
+
+  // ビューURLを取得
+  getViewUrl(viewId: string): string;
 
   // 検索クエリを処理
-  handleSearch(query: string): void
+  handleSearch(query: string): void;
 
   // データベースフィルターを適用
-  applyDatabaseFilter(databaseIds: string[], hide: boolean): void
+  applyDatabaseFilter(databaseIds: string[]): void;
 
   // ノードクリックを処理
-  handleNodeClick(nodeId: string): void
+  handleNodeClick(nodeId: string): void;
 
   // 進行状況を表示
-  showProgress(current: number, total: number): void
+  showProgress(current: number, total: number): void;
 
   // エラーを表示
-  showError(error: Error): void
+  showError(error: Error): void;
 }
 ```
 
 **認証フロー**:
+
 1. 初回アクセス時、ログイン/登録画面を表示
 2. ユーザーがアカウントを作成またはログイン
 3. ログイン成功後、Notion Integration Token入力画面を表示
@@ -197,12 +233,16 @@ POST   /api/notion/token         // Notionトークンを保存
 GET    /api/notion/token/verify  // Notionトークンを検証
 
 // グラフデータ
-GET    /api/graph/data           // グラフデータを取得
+GET    /api/graph/data           // グラフデータを取得（全データベース）
 GET    /api/graph/databases      // データベース一覧を取得
 
-// ビュー設定
-POST   /api/settings/view        // ビュー設定を保存
-GET    /api/settings/view        // ビュー設定を取得
+// ビュー管理
+POST   /api/views                // ビュー設定を作成
+GET    /api/views                // ユーザーのビュー設定一覧を取得
+GET    /api/views/:viewId        // 特定のビュー設定を取得
+PUT    /api/views/:viewId        // ビュー設定を更新
+DELETE /api/views/:viewId        // ビュー設定を削除
+GET    /api/views/:viewId/data   // ビュー設定に基づくグラフデータを取得
 ```
 
 #### 2. Notion API Client
@@ -214,23 +254,24 @@ GET    /api/settings/view        // ビュー設定を取得
 ```typescript
 interface NotionAPIClient {
   // APIトークンを検証し、接続を確立
-  authenticate(token: string): Promise<AuthResult>
+  authenticate(token: string): Promise<AuthResult>;
 
   // すべてのアクセス可能なデータベースを取得
-  getDatabases(token: string): Promise<Database[]>
+  getDatabases(token: string): Promise<Database[]>;
 
   // 指定されたデータベースからページを取得
-  getPages(token: string, databaseId: string): Promise<Page[]>
+  getPages(token: string, databaseId: string): Promise<Page[]>;
 
   // ページのリレーションプロパティを解析
-  extractRelations(page: Page): Relation[]
+  extractRelations(page: Page): Relation[];
 
   // バッチ処理でページデータを取得
-  fetchPagesInBatch(token: string, pageIds: string[]): Promise<Page[]>
+  fetchPagesInBatch(token: string, pageIds: string[]): Promise<Page[]>;
 }
 ```
 
 **エラーハンドリング**:
+
 - 無効なトークン: `InvalidTokenError`
 - ネットワークエラー: `NetworkError`
 - レート制限: `RateLimitError`
@@ -245,20 +286,21 @@ interface NotionAPIClient {
 ```typescript
 interface CacheManager {
   // グラフデータをキャッシュに保存
-  cacheGraphData(userId: string, data: GraphData, ttl: number): Promise<void>
+  cacheGraphData(userId: string, data: GraphData, ttl: number): Promise<void>;
 
   // キャッシュからグラフデータを取得
-  getGraphData(userId: string): Promise<GraphData | null>
+  getGraphData(userId: string): Promise<GraphData | null>;
 
   // キャッシュを無効化
-  invalidateCache(userId: string): Promise<void>
+  invalidateCache(userId: string): Promise<void>;
 
   // キャッシュの有効期限を確認
-  isCacheValid(userId: string): Promise<boolean>
+  isCacheValid(userId: string): Promise<boolean>;
 }
 ```
 
 **キャッシュ戦略**:
+
 - TTL（Time To Live）: 15分
 - ユーザーごとにキャッシュを分離
 - データ更新時にキャッシュを無効化
@@ -272,26 +314,27 @@ interface CacheManager {
 ```typescript
 interface AuthService {
   // ユーザーを登録
-  register(email: string, password: string): Promise<User>
+  register(email: string, password: string): Promise<User>;
 
   // ユーザーをログイン
-  login(email: string, password: string): Promise<SessionToken>
+  login(email: string, password: string): Promise<SessionToken>;
 
   // セッションを検証
-  validateSession(sessionToken: string): Promise<User>
+  validateSession(sessionToken: string): Promise<User>;
 
   // セッションを無効化
-  logout(sessionToken: string): Promise<void>
+  logout(sessionToken: string): Promise<void>;
 
   // Notionトークンを暗号化
-  encryptNotionToken(token: string): string
+  encryptNotionToken(token: string): string;
 
   // Notionトークンを復号化
-  decryptNotionToken(encryptedToken: string): string
+  decryptNotionToken(encryptedToken: string): string;
 }
 ```
 
 **セキュリティ**:
+
 - パスワードはbcryptでハッシュ化
 - セッショントークンはJWT（JSON Web Token）
 - NotionトークンはAES-256で暗号化
@@ -306,25 +349,44 @@ interface AuthService {
 ```typescript
 interface DatabaseService {
   // ユーザーを作成
-  createUser(email: string, passwordHash: string): Promise<User>
+  createUser(email: string, passwordHash: string): Promise<User>;
 
   // ユーザーを取得
-  getUser(userId: string): Promise<User | null>
+  getUser(userId: string): Promise<User | null>;
 
   // メールアドレスでユーザーを取得
-  getUserByEmail(email: string): Promise<User | null>
+  getUserByEmail(email: string): Promise<User | null>;
 
   // Notionトークンを保存
-  saveNotionToken(userId: string, encryptedToken: string): Promise<void>
+  saveNotionToken(userId: string, encryptedToken: string): Promise<void>;
 
   // Notionトークンを取得
-  getNotionToken(userId: string): Promise<string | null>
+  getNotionToken(userId: string): Promise<string | null>;
 
-  // ビュー設定を保存
-  saveViewSettings(userId: string, settings: ViewSettings): Promise<void>
+  // ビュー設定を作成
+  createView(
+    userId: string,
+    name: string,
+    databaseIds: string[],
+    settings: ViewSettings
+  ): Promise<View>;
 
-  // ビュー設定を取得
-  getViewSettings(userId: string): Promise<ViewSettings | null>
+  // ユーザーのビュー設定一覧を取得
+  getViews(userId: string): Promise<View[]>;
+
+  // 特定のビュー設定を取得
+  getView(viewId: string): Promise<View | null>;
+
+  // ビュー設定を更新
+  updateView(
+    viewId: string,
+    name: string,
+    databaseIds: string[],
+    settings: ViewSettings
+  ): Promise<View>;
+
+  // ビュー設定を削除
+  deleteView(viewId: string): Promise<void>;
 }
 ```
 
@@ -336,12 +398,12 @@ interface DatabaseService {
 
 ```typescript
 interface Node {
-  id: string              // NotionページID
-  title: string           // ページタイトル
-  databaseId: string      // 所属するデータベースID
-  x: number              // グラフ上のX座標
-  y: number              // グラフ上のY座標
-  visible: boolean       // 表示/非表示フラグ
+  id: string; // NotionページID
+  title: string; // ページタイトル
+  databaseId: string; // 所属するデータベースID
+  x: number; // グラフ上のX座標
+  y: number; // グラフ上のY座標
+  visible: boolean; // 表示/非表示フラグ
 }
 ```
 
@@ -349,11 +411,11 @@ interface Node {
 
 ```typescript
 interface Edge {
-  id: string              // エッジの一意ID
-  sourceId: string        // 始点ノードID
-  targetId: string        // 終点ノードID
-  relationProperty: string // リレーションプロパティ名
-  visible: boolean       // 表示/非表示フラグ
+  id: string; // エッジの一意ID
+  sourceId: string; // 始点ノードID
+  targetId: string; // 終点ノードID
+  relationProperty: string; // リレーションプロパティ名
+  visible: boolean; // 表示/非表示フラグ
 }
 ```
 
@@ -361,9 +423,9 @@ interface Edge {
 
 ```typescript
 interface Database {
-  id: string              // データベースID
-  title: string           // データベース名
-  hidden: boolean         // 非表示フラグ
+  id: string; // データベースID
+  title: string; // データベース名
+  hidden: boolean; // 非表示フラグ
 }
 ```
 
@@ -371,10 +433,21 @@ interface Database {
 
 ```typescript
 interface ViewSettings {
-  zoomLevel: number       // ズームレベル
-  panX: number           // パン位置X
-  panY: number           // パン位置Y
-  hiddenDatabases: string[] // 非表示データベースIDリスト
+  zoomLevel: number; // ズームレベル
+  panX: number; // パン位置X
+  panY: number; // パン位置Y
+}
+```
+
+#### View（ビュー）
+
+```typescript
+interface View {
+  id: string; // ビューID（一意）
+  name: string; // ビュー名
+  databaseIds: string[]; // 表示するデータベースIDリスト
+  settings: ViewSettings; // ビュー設定（ズーム、パン）
+  url: string; // ビュー専用URL（例: /view/{id}）
 }
 ```
 
@@ -382,9 +455,9 @@ interface ViewSettings {
 
 ```typescript
 interface GraphData {
-  nodes: Node[]           // ノードリスト
-  edges: Edge[]           // エッジリスト
-  databases: Database[]   // データベースリスト
+  nodes: Node[]; // ノードリスト
+  edges: Edge[]; // エッジリスト
+  databases: Database[]; // データベースリスト
 }
 ```
 
@@ -392,9 +465,9 @@ interface GraphData {
 
 ```typescript
 interface AuthResponse {
-  success: boolean        // 認証成功フラグ
-  user?: User            // ユーザー情報
-  error?: string         // エラーメッセージ
+  success: boolean; // 認証成功フラグ
+  user?: User; // ユーザー情報
+  error?: string; // エラーメッセージ
 }
 ```
 
@@ -404,11 +477,11 @@ interface AuthResponse {
 
 ```typescript
 interface User {
-  id: string              // ユーザーID
-  email: string           // メールアドレス
-  passwordHash: string    // パスワードハッシュ
-  createdAt: Date         // 作成日時
-  updatedAt: Date         // 更新日時
+  id: string; // ユーザーID
+  email: string; // メールアドレス
+  passwordHash: string; // パスワードハッシュ
+  createdAt: Date; // 作成日時
+  updatedAt: Date; // 更新日時
 }
 ```
 
@@ -416,10 +489,10 @@ interface User {
 
 ```typescript
 interface NotionToken {
-  userId: string          // ユーザーID
-  encryptedToken: string  // 暗号化されたNotionトークン
-  createdAt: Date         // 作成日時
-  updatedAt: Date         // 更新日時
+  userId: string; // ユーザーID
+  encryptedToken: string; // 暗号化されたNotionトークン
+  createdAt: Date; // 作成日時
+  updatedAt: Date; // 更新日時
 }
 ```
 
@@ -427,10 +500,10 @@ interface NotionToken {
 
 ```typescript
 interface Page {
-  id: string              // ページID
-  title: string           // ページタイトル
-  databaseId: string      // 所属するデータベースID
-  properties: Property[]  // ページプロパティ
+  id: string; // ページID
+  title: string; // ページタイトル
+  databaseId: string; // 所属するデータベースID
+  properties: Property[]; // ページプロパティ
 }
 ```
 
@@ -438,9 +511,9 @@ interface Page {
 
 ```typescript
 interface Relation {
-  sourcePageId: string    // リレーション元ページID
-  targetPageId: string    // リレーション先ページID
-  propertyName: string    // リレーションプロパティ名
+  sourcePageId: string; // リレーション元ページID
+  targetPageId: string; // リレーション先ページID
+  propertyName: string; // リレーションプロパティ名
 }
 ```
 
@@ -448,10 +521,10 @@ interface Relation {
 
 ```typescript
 interface CachedGraphData {
-  userId: string          // ユーザーID
-  data: GraphData         // グラフデータ
-  cachedAt: Date          // キャッシュ日時
-  expiresAt: Date         // 有効期限
+  userId: string; // ユーザーID
+  data: GraphData; // グラフデータ
+  cachedAt: Date; // キャッシュ日時
+  expiresAt: Date; // 有効期限
 }
 ```
 
@@ -459,9 +532,9 @@ interface CachedGraphData {
 
 ```typescript
 interface AuthResult {
-  success: boolean        // 認証成功フラグ
-  workspaceName?: string  // ワークスペース名
-  error?: string         // エラーメッセージ
+  success: boolean; // 認証成功フラグ
+  workspaceName?: string; // ワークスペース名
+  error?: string; // エラーメッセージ
 }
 ```
 
@@ -469,11 +542,26 @@ interface AuthResult {
 
 ```typescript
 interface SessionToken {
-  token: string           // JWTトークン
-  expiresAt: Date         // 有効期限
+  token: string; // JWTトークン
+  expiresAt: Date; // 有効期限
 }
 ```
 
+#### View（ビュー）
+
+```typescript
+interface View {
+  id: string; // ビューID
+  userId: string; // ユーザーID
+  name: string; // ビュー名
+  databaseIds: string[]; // 表示するデータベースIDリスト
+  zoomLevel: number; // ズームレベル
+  panX: number; // パン位置X
+  panY: number; // パン位置Y
+  createdAt: Date; // 作成日時
+  updatedAt: Date; // 更新日時
+}
+```
 
 ## 正確性プロパティ
 
@@ -553,29 +641,35 @@ interface SessionToken {
 
 ### プロパティ13: データベースフィルタリングの正確性
 
-*任意の*データベースIDのセットに対して、それらのデータベースを非表示にすると、そのデータベースに属するすべてのノードとそれらに接続されたエッジが非表示になる
+*任意の*データベースIDのセットに対して、それらのデータベースを選択して表示すると、そのデータベースに属するすべてのノードとそれらに接続されたエッジが表示される
 
-**検証対象: 要件 5.4, 5.5**
+**検証対象: 要件 5.2, 5.3**
 
-### プロパティ14: フィルタークリアのラウンドトリップ
+### プロパティ14: ビュー作成のラウンドトリップ
 
-*任意の*グラフ状態に対して、データベースを非表示にしてから非表示設定をクリアすると、元のグラフ状態（すべてのノードとエッジが表示）に戻る
+*任意の*ビュー設定（名前、データベースID、ズーム、パン）に対して、ビューを作成してから取得すると、同じ設定値が返され、一意のビューIDとURLが生成される
 
-**検証対象: 要件 5.6**
+**検証対象: 要件 6.3, 6.4**
 
-### プロパティ15: トークン保存のラウンドトリップ
+### プロパティ15: ビューURL経由のアクセス
+
+*任意の*ビューIDに対して、そのビュー専用URLにアクセスすると、ビュー設定に基づくグラフデータが正しく表示される
+
+**検証対象: 要件 6.5, 6.10**
+
+### プロパティ16: トークン保存のラウンドトリップ
 
 *任意の*APIトークン文字列に対して、バックエンドのデータベースに暗号化して保存してから取得すると、復号化後に同じトークン文字列が返される
 
 **検証対象: 要件 6.1**
 
-### プロパティ16: ビュー設定保存のラウンドトリップ
+### プロパティ17: ビュー設定保存のラウンドトリップ
 
 *任意の*ビュー設定（ズームレベル、パン位置）に対して、バックエンドのデータベースに保存してから取得すると、同じ設定値が返される
 
-**検証対象: 要件 6.3, 6.4**
+**検証対象: 要件 6.8, 6.11**
 
-### プロパティ17: バッチ処理の最適化
+### プロパティ18: バッチ処理の最適化
 
 *任意の*ページIDのリストに対して、バッチ処理を使用すると、API呼び出し回数が個別リクエストよりも少なくなる
 
@@ -623,11 +717,14 @@ interface SessionToken {
 ### エラーログ
 
 #### フロントエンド
+
 - ブラウザコンソールにエラーを記録
 - 重要なエラーはバックエンドに送信（エラートラッキング）
 
 #### バックエンド
+
 すべてのエラーは以下の情報とともにログに記録されます：
+
 - タイムスタンプ
 - ユーザーID
 - エラーの種類
@@ -647,39 +744,46 @@ interface SessionToken {
 ### プロパティベーステスト
 
 **テストライブラリ**:
+
 - フロントエンド（JavaScript/TypeScript）: `fast-check`
 - バックエンド（Python）: `hypothesis`、バックエンド（Node.js）: `fast-check`
 
 **設定**:
+
 - 各プロパティテストは最低100回の反復を実行
 - 各テストには設計書のプロパティを参照するタグを付ける
 - タグ形式: `Feature: notion-relation-view, Property {番号}: {プロパティテキスト}`
 
 **テスト対象**:
+
 - トークン検証（プロパティ1）
 - エラーハンドリング（プロパティ2）
 - データ取得と変換（プロパティ3, 4）
 - グラフ構造生成（プロパティ5, 6）
 - インタラクション処理（プロパティ7-12）
-- フィルタリング機能（プロパティ13, 14）
-- データ永続化（プロパティ15, 16）
-- バッチ処理最適化（プロパティ17）
+- フィルタリング機能（プロパティ13）
+- ビュー管理（プロパティ14, 15）
+- データ永続化（プロパティ16, 17）
+- バッチ処理最適化（プロパティ18）
 
 ### ユニットテスト
 
 **テストフレームワーク**:
+
 - フロントエンド: Jest + React Testing Library
 - バックエンド: Jest（Node.js）またはpytest（Python）
 
 **テスト対象**:
 
 #### フロントエンド
+
 - 特定のエッジケース（空のデータベース、リレーションのないページ）
 - UI コンポーネントのレンダリング
 - ユーザーインタラクション（クリック、ドラッグ、ズーム）
 - バックエンドAPIとの統合
 
 #### バックエンド
+
 - API エンドポイントの動作
 - 認証・認可ロジック
 - トークン暗号化・復号化
@@ -688,6 +792,7 @@ interface SessionToken {
 - キャッシュ機能
 
 **テストバランス**:
+
 - ユニットテストは特定の例とエッジケースに焦点を当てる
 - プロパティベーステストが多数の入力をカバーするため、過度なユニットテストは避ける
 - 統合テストは主要なユーザーフローを検証
@@ -695,6 +800,7 @@ interface SessionToken {
 ### 統合テスト
 
 **テスト対象**:
+
 - エンドツーエンドのユーザーフロー（登録 → ログイン → トークン設定 → グラフ表示）
 - フロントエンドとバックエンドの統合
 - データベースとの統合
@@ -717,6 +823,7 @@ interface SessionToken {
 ## 技術スタック
 
 ### フロントエンド
+
 - **フレームワーク**: React + TypeScript
 - **状態管理**: React Context API または Redux
 - **グラフ描画**: D3.js、Cytoscape.js、または vis.js
@@ -726,6 +833,7 @@ interface SessionToken {
 - **ホスティング**: Vercel または Netlify
 
 ### バックエンド
+
 - **言語**: Python 3.11+
 - **フレームワーク**: FastAPI
 - **データベース**: PostgreSQL
@@ -756,13 +864,15 @@ CREATE TABLE notion_tokens (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ビュー設定テーブル
-CREATE TABLE view_settings (
-  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+-- ビューテーブル
+CREATE TABLE views (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  database_ids TEXT[] NOT NULL, -- データベースIDの配列
   zoom_level FLOAT DEFAULT 1.0,
   pan_x FLOAT DEFAULT 0.0,
   pan_y FLOAT DEFAULT 0.0,
-  hidden_databases TEXT[], -- データベースIDの配列
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -779,27 +889,32 @@ CREATE TABLE cached_graph_data (
 ## セキュリティ考慮事項
 
 ### トークン管理
+
 - Notion APIトークンはAES-256で暗号化してデータベースに保存
 - 暗号化キーは環境変数で管理し、コードに含めない
 - トークンはフロントエンドに送信せず、バックエンドでのみ使用
 
 ### 認証・認可
+
 - パスワードはbcryptでハッシュ化（ソルト付き）
 - セッショントークンはJWTで管理
 - HTTPOnly Cookieでセッショントークンを保存（XSS対策）
 - CSRF対策（CSRFトークンまたはSameSite Cookie）
 
 ### 通信セキュリティ
+
 - すべての通信はHTTPS経由
 - CORS設定を適切に構成
 - CSP（Content Security Policy）ヘッダーを設定
 
 ### データ保護
+
 - ユーザーデータは暗号化して保存
 - データベース接続は暗号化
 - 定期的なバックアップ
 
 ### レート制限
+
 - API エンドポイントにレート制限を実装
 - Notion API のレート制限を考慮したリクエスト管理
 
@@ -808,17 +923,20 @@ CREATE TABLE cached_graph_data (
 ### デプロイメント
 
 ### 開発環境
+
 - フロントエンド: `npm run dev`
 - バックエンド: `uvicorn main:app --reload`
 - データベース: Docker Compose で PostgreSQL を起動
 
 ### 本番環境
+
 - フロントエンド: Vercel または Netlify に自動デプロイ
 - バックエンド: Railway、Render、または AWS に自動デプロイ
 - データベース: マネージドPostgreSQL（Railway、Render、AWS RDS）
 - CI/CD: GitHub Actions でテスト・ビルド・デプロイを自動化
 
 ### 環境変数
+
 - `DATABASE_URL`: データベース接続URL
 - `JWT_SECRET`: JWT署名用シークレット
 - `ENCRYPTION_KEY`: トークン暗号化用キー
