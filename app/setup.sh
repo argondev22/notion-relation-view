@@ -47,5 +47,3 @@ echo "  make logs-frontend - View frontend logs"
 echo "  make down          - Stop all services"
 echo "  make restart       - Restart all services"
 echo "  make test          - Run all tests"
-
-
