@@ -30,7 +30,7 @@
     - **プロパティ16: トークン保存のラウンドトリップ**
     - **検証対象: 要件 6.1**
 
-  - [ ] 2.4 認証APIエンドポイントの実装
+  - [x] 2.4 認証APIエンドポイントの実装
     - POST /api/auth/register
     - POST /api/auth/login
     - POST /api/auth/logout
