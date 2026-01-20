@@ -1,4 +1,4 @@
-.PHONY: init build up down logs clean setup-frontend setup-backend db-migrate db-upgrade test
+.PHONY: init build up down logs clean setup db-migrate db-upgrade test dev
 
 init:
 	@chmod +x ./bin/init-project.sh
@@ -6,46 +6,84 @@ init:
 
 # Docker commands
 build:
-	@docker compose build
+	@cd app && docker compose build
 
 up:
-	@docker compose up -d
+	@cd app && docker compose up -d
 
 down:
-	@docker compose down
+	@cd app && docker compose down
 
 logs:
-	@docker compose logs -f
+	@cd app && docker compose logs -f
+
+logs-backend:
+	@cd app && docker compose logs -f backend
+
+logs-frontend:
+	@cd app && docker compose logs -f frontend
 
 clean:
 	@docker system prune -f
 	@docker volume prune -f
 
 # Setup commands
-setup-frontend:
-	@cd app/frontend && npm install
-
-setup-backend:
-	@cd app/backend && python -m venv venv && . venv/bin/activate && pip install -r requirements.txt
-
-setup: up setup-frontend setup-backend
-	@echo "Setup complete! Run 'make db-migrate' to create database tables."
+setup: build up
+	@echo "Waiting for services to be ready..."
+	@sleep 10
+	@echo "Running database migrations..."
+	@cd app && docker compose exec backend alembic upgrade head
+	@echo "✅ Setup complete!"
+	@echo ""
+	@echo "Services running:"
+	@echo "  Frontend: http://localhost:3000"
+	@echo "  Backend:  http://localhost:8000"
+	@echo "  API Docs: http://localhost:8000/docs"
 
 # Database commands
 db-migrate:
-	@cd app/backend && . venv/bin/activate && alembic revision --autogenerate -m "Initial migration"
+	@cd app && docker compose exec backend alembic revision --autogenerate -m "$(msg)"
 
 db-upgrade:
-	@cd app/backend && . venv/bin/activate && alembic upgrade head
+	@cd app && docker compose exec backend alembic upgrade head
+
+db-downgrade:
+	@cd app && docker compose exec backend alembic downgrade -1
 
 # Test commands
 test:
-	@cd app/frontend && npm test
-	@cd app/backend && . venv/bin/activate && pytest
+	@cd app && docker compose exec frontend npm test
+	@cd app && docker compose exec backend pytest
+
+test-frontend:
+	@cd app && docker compose exec frontend npm test
+
+test-backend:
+	@cd app && docker compose exec backend pytest
 
 # Development commands
-dev-frontend:
-	@cd app/frontend && npm run dev
+dev: up
+	@echo "Development environment is running"
+	@echo "  Frontend: http://localhost:3000"
+	@echo "  Backend:  http://localhost:8000"
+	@echo "  API Docs: http://localhost:8000/docs"
 
-dev-backend:
-	@cd app/backend && . venv/bin/activate && uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+restart:
+	@cd app && docker compose restart
+
+restart-backend:
+	@cd app && docker compose restart backend
+
+restart-frontend:
+	@cd app && docker compose restart frontend
+
+# Shell access
+shell-backend:
+	@cd app && docker compose exec backend /bin/bash
+
+shell-frontend:
+	@cd app && docker compose exec frontend /bin/sh
+
+# Database shell
+db-shell:
+	@cd app && docker compose exec postgres psql -U postgres -d notion_relation_view

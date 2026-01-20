@@ -4,64 +4,163 @@
 
 The project structure has been initialized with:
 
-- ✅ Frontend (React + TypeScript + Vite)
-- ✅ Backend (Python + FastAPI)
+- ✅ Frontend (React + TypeScript + Vite) - Dockerized
+- ✅ Backend (Python + FastAPI) - Dockerized
 - ✅ Database schema (PostgreSQL with Alembic migrations)
-- ✅ Docker Compose configuration
+- ✅ Docker Compose configuration (all services)
 - ✅ Test frameworks (Jest + fast-check, pytest + hypothesis)
 
-## Getting Started
+## Getting Started with Docker
 
-### 1. Start Database Services
+### 1. Start All Services
 
 ```bash
+cd app
+./setup.sh
+```
+
+Or from project root:
+
+```bash
+make setup
+```
+
+This will:
+- Build all Docker images
+- Start PostgreSQL, Redis, Backend, and Frontend
+- Run database migrations
+
+Or manually:
+
+```bash
+cd app
+docker compose build
 docker compose up -d
+docker compose exec backend alembic upgrade head
 ```
 
-This starts PostgreSQL and Redis containers.
+### 2. Access Services
 
-### 2. Setup Backend
+- **Frontend**: <http://localhost:3000>
+- **Backend API**: <http://localhost:8000>
+- **API Docs**: <http://localhost:8000/docs>
+- **ReDoc**: <http://localhost:8000/redoc>
+
+### 3. View Logs
 
 ```bash
-cd app/backend
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-cp .env.example .env
+cd app
+docker compose logs -f              # All services
+docker compose logs -f backend      # Backend only
+docker compose logs -f frontend     # Frontend only
 ```
 
-Edit `.env` file with your configuration.
-
-### 3. Run Database Migrations
+Or from project root:
 
 ```bash
-cd app/backend
-source venv/bin/activate
-alembic upgrade head
+make logs
+make logs-backend
+make logs-frontend
 ```
 
-### 4. Setup Frontend
+## Docker Services
+
+### Frontend Container
+
+- **Base Image**: node:20-alpine
+- **Port**: 3000
+- **Hot Reload**: Enabled via volume mount
+- **Command**: `npm run dev -- --host 0.0.0.0`
+
+### Backend Container
+
+- **Base Image**: python:3.11-slim
+- **Port**: 8000
+- **Hot Reload**: Enabled via volume mount
+- **Command**: `uvicorn app.main:app --reload --host 0.0.0.0`
+
+### PostgreSQL Container
+
+- **Image**: postgres:16-alpine
+- **Port**: 5432
+- **Database**: notion_relation_view
+- **Credentials**: postgres/postgres
+
+### Redis Container
+
+- **Image**: redis:7-alpine
+- **Port**: 6379
+
+## Development Workflow
+
+### Making Code Changes
+
+All code changes are automatically reflected due to volume mounts:
+
+**Frontend**:
+- Edit files in `app/frontend/src/`
+- Vite will hot-reload automatically
+
+**Backend**:
+- Edit files in `app/backend/app/`
+- Uvicorn will reload automatically
+
+### Running Tests
 
 ```bash
-cd app/frontend
-npm install
+# All tests (from project root)
+make test
+
+# Frontend only
+cd app && docker compose exec frontend npm test
+# or from project root
+make test-frontend
+
+# Backend only
+cd app && docker compose exec backend pytest
+# or from project root
+make test-backend
 ```
 
-### 5. Start Development Servers
-
-**Backend** (Terminal 1):
+### Database Operations
 
 ```bash
-cd app/backend
-source venv/bin/activate
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Apply migrations
+cd app && docker compose exec backend alembic upgrade head
+# or from project root
+make db-upgrade
+
+# Create new migration
+cd app && docker compose exec backend alembic revision --autogenerate -m "Add new table"
+# or from project root
+make db-migrate msg="Add new table"
+
+# Rollback
+cd app && docker compose exec backend alembic downgrade -1
+# or from project root
+make db-downgrade
+
+# Access database shell
+cd app && docker compose exec postgres psql -U postgres -d notion_relation_view
+# or from project root
+make db-shell
 ```
 
-**Frontend** (Terminal 2):
+### Shell Access
 
 ```bash
-cd app/frontend
-npm run dev
+# Backend shell
+cd app && docker compose exec backend /bin/bash
+# or from project root
+make shell-backend
+
+# Frontend shell
+cd app && docker compose exec frontend /bin/sh
+# or from project root
+make shell-frontend
+```
+make shell-frontend
+docker compose exec frontend /bin/sh
 ```
 
 ## Project Structure
@@ -75,6 +174,8 @@ app/
 │   │   ├── types/         # TypeScript types
 │   │   ├── App.tsx
 │   │   └── main.tsx
+│   ├── Dockerfile         # Frontend Docker image
+│   ├── .dockerignore
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── vite.config.ts
@@ -91,114 +192,176 @@ app/
     │   └── database.py
     ├── migrations/        # Alembic migrations
     ├── tests/
+    ├── Dockerfile         # Backend Docker image
+    ├── .dockerignore
     └── requirements.txt
 ```
 
-## Database Schema
+## Environment Variables
 
-### Users Table
+Environment variables are configured in `docker-compose.yml`:
 
-- `id` (UUID, PK)
-- `email` (String, unique)
-- `password_hash` (String)
-- `created_at` (DateTime)
-- `updated_at` (DateTime)
+### Backend Environment
 
-### Notion Tokens Table
+```yaml
+DATABASE_URL: postgresql://postgres:postgres@postgres:5432/notion_relation_view
+REDIS_URL: redis://redis:6379
+FRONTEND_URL: http://localhost:3000
+JWT_SECRET: dev-secret-key-change-in-production
+JWT_ALGORITHM: HS256
+JWT_EXPIRATION_MINUTES: 1440
+ENCRYPTION_KEY: dev-encryption-key-change-in-production
+```
 
-- `user_id` (UUID, PK, FK to users)
-- `encrypted_token` (String)
-- `created_at` (DateTime)
-- `updated_at` (DateTime)
+### Frontend Environment
 
-### Views Table
+```yaml
+VITE_API_URL: http://localhost:8000
+```
 
-- `id` (UUID, PK)
-- `user_id` (UUID, FK to users)
-- `name` (String)
-- `database_ids` (Array of Strings)
-- `zoom_level` (Float)
-- `pan_x` (Float)
-- `pan_y` (Float)
-- `created_at` (DateTime)
-- `updated_at` (DateTime)
+## Common Commands
+
+### Service Management
+
+```bash
+cd app
+docker compose up -d    # Start all services
+docker compose down     # Stop all services
+docker compose restart  # Restart all services
+docker compose restart backend  # Restart backend only
+docker compose restart frontend # Restart frontend only
+docker compose logs -f  # View all logs
+
+# Or from project root
+make up
+make down
+make restart
+make restart-backend
+make restart-frontend
+make logs
+```
+
+### Development
+
+```bash
+cd app
+docker compose up -d    # Start development environment
+
+# Or from project root
+make dev                # Start development environment
+make test               # Run all tests
+make db-upgrade         # Apply migrations
+make db-shell           # Database shell
+make shell-backend      # Backend shell
+make shell-frontend     # Frontend shell
+```
+
+### Cleanup
+
+```bash
+cd app
+docker compose down     # Stop services
+docker compose down -v  # Remove volumes too
+
+# Or from project root
+make down
+make clean              # Clean Docker system
+```
+
+## Troubleshooting
+
+### Services won't start
+
+```bash
+make down
+make clean
+make build
+make up
+```
+
+### Port already in use
+
+Check if ports 3000, 8000, 5432, or 6379 are already in use:
+
+```bash
+lsof -i :3000
+lsof -i :8000
+lsof -i :5432
+lsof -i :6379
+```
+
+### Database connection issues
+
+```bash
+# Check service health
+cd app && docker compose ps
+
+# View backend logs
+cd app && docker compose logs backend
+# or from project root
+make logs-backend
+
+# Restart database
+cd app && docker compose restart postgres
+```
+
+### Frontend not hot-reloading
+
+```bash
+# Restart frontend
+cd app && docker compose restart frontend
+# or from project root
+make restart-frontend
+
+# Check logs
+cd app && docker compose logs frontend
+# or from project root
+make logs-frontend
+```
+
+### Backend not hot-reloading
+
+```bash
+# Restart backend
+cd app && docker compose restart backend
+# or from project root
+make restart-backend
+
+# Check logs
+cd app && docker compose logs backend
+# or from project root
+make logs-backend
+```
 
 ## Testing
 
 ### Frontend Tests
 
 ```bash
-cd app/frontend
-npm test              # Run once
-npm run test:watch    # Watch mode
+# Run tests
+cd app && docker compose exec frontend npm test
+
+# With coverage
+cd app && docker compose exec frontend npm test -- --coverage
+
+# Or from project root
+make test-frontend
 ```
 
 ### Backend Tests
 
 ```bash
-cd app/backend
-source venv/bin/activate
-pytest                # Run all tests
-pytest -v             # Verbose output
-pytest --cov=app      # With coverage
-```
+# Run tests
+cd app && docker compose exec backend pytest
 
-## API Documentation
+# Verbose output
+cd app && docker compose exec backend pytest -v
 
-Once the backend is running:
+# With coverage
+cd app && docker compose exec backend pytest --cov=app
 
-- Swagger UI: <http://localhost:8000/docs>
-- ReDoc: <http://localhost:8000/redoc>
-
-## Environment Variables
-
-### Backend (.env)
-
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/notion_relation_view
-JWT_SECRET=your-secret-key-change-this-in-production
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION_MINUTES=1440
-ENCRYPTION_KEY=your-encryption-key-change-this-in-production
-FRONTEND_URL=http://localhost:3000
-REDIS_URL=redis://localhost:6379
-```
-
-## Common Commands
-
-### Database
-
-```bash
-# Create new migration
-alembic revision --autogenerate -m "Description"
-
-# Apply migrations
-alembic upgrade head
-
-# Rollback one migration
-alembic downgrade -1
-
-# Show current revision
-alembic current
-
-# Show migration history
-alembic history
-```
-
-### Docker
-
-```bash
-# Start services
-docker compose up -d
-
-# Stop services
-docker compose down
-
-# View logs
-docker compose logs -f
-
-# Restart a service
-docker compose restart postgres
+# Or from project root
+make test-backend
 ```
 
 ## Next Steps

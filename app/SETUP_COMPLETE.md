@@ -2,14 +2,19 @@
 
 ## Task 1: プロジェクト構造とコア設定のセットアップ
 
-All components have been successfully set up:
+All components have been successfully set up with **full Docker support**:
 
-### ✅ Frontend (React + TypeScript + Vite)
+### ✅ Frontend (React + TypeScript + Vite) - Dockerized
 
 **Location**: `app/frontend/`
 
-**Key Files**:
+**Docker Configuration**:
+- `Dockerfile` - Node 20 Alpine image with hot-reload
+- `.dockerignore` - Optimized build context
+- Port: 3000
+- Volume mount for live code updates
 
+**Key Files**:
 - `package.json` - Dependencies: React 18, TypeScript, Vite, Jest, fast-check
 - `tsconfig.json` - TypeScript configuration with strict mode
 - `vite.config.ts` - Vite configuration with proxy to backend
@@ -22,12 +27,17 @@ All components have been successfully set up:
 
 **Test Framework**: Jest + React Testing Library + fast-check
 
-### ✅ Backend (Python + FastAPI)
+### ✅ Backend (Python + FastAPI) - Dockerized
 
 **Location**: `app/backend/`
 
-**Key Files**:
+**Docker Configuration**:
+- `Dockerfile` - Python 3.11 slim image with hot-reload
+- `.dockerignore` - Optimized build context
+- Port: 8000
+- Volume mount for live code updates
 
+**Key Files**:
 - `requirements.txt` - Dependencies: FastAPI, SQLAlchemy, Alembic, pytest, hypothesis
 - `pyproject.toml` - pytest configuration
 - `app/main.py` - FastAPI application with CORS
@@ -36,7 +46,6 @@ All components have been successfully set up:
 - `app/models/user.py` - User model
 - `app/models/notion_token.py` - NotionToken model
 - `app/models/view.py` - View model
-- `.env.example` - Environment variables template
 
 **Test Framework**: pytest + hypothesis
 
@@ -45,7 +54,6 @@ All components have been successfully set up:
 **Location**: `app/backend/migrations/`
 
 **Tables Defined**:
-
 1. **users** - User accounts with email and password
 2. **notion_tokens** - Encrypted Notion API tokens per user
 3. **views** - Saved view configurations with database filters and settings
@@ -53,10 +61,9 @@ All components have been successfully set up:
 **Migration**: `migrations/versions/001_initial_migration.py`
 
 **Commands**:
-
 ```bash
-alembic upgrade head    # Apply migrations
-alembic downgrade -1    # Rollback
+make db-upgrade      # Apply migrations
+make db-downgrade    # Rollback
 ```
 
 ### ✅ Development Environment (Docker Compose)
@@ -64,51 +71,71 @@ alembic downgrade -1    # Rollback
 **Location**: `docker-compose.yml`
 
 **Services**:
-
 - **postgres** - PostgreSQL 16 on port 5432
 - **redis** - Redis 7 on port 6379 (for caching)
+- **backend** - FastAPI application on port 8000 (Dockerized)
+- **frontend** - React + Vite application on port 3000 (Dockerized)
+
+**Network**: All services on `app-network` bridge network
+
+**Volumes**:
+- `postgres_data` - Persistent database
+- `redis_data` - Persistent cache
+- Frontend/Backend source code mounted for hot-reload
 
 **Commands**:
-
 ```bash
-docker compose up -d    # Start services
-docker compose down     # Stop services
-docker compose logs -f  # View logs
+make setup           # Build and start all services
+make up              # Start services
+make down            # Stop services
+make logs            # View all logs
+make restart         # Restart services
 ```
 
 ### ✅ Test Frameworks
 
 **Frontend**:
-
 - Jest 29 with ts-jest
 - React Testing Library
 - fast-check for property-based testing
 - Coverage threshold: 80%
+- Run: `make test-frontend`
 
 **Backend**:
-
 - pytest with pytest-asyncio
 - hypothesis for property-based testing
 - Coverage tracking configured
+- Run: `make test-backend`
 
 ### ✅ Additional Setup
 
 **Files Created**:
-
-- `app/README.md` - Project overview and quick start guide
-- `app/DEVELOPMENT.md` - Comprehensive development guide
-- `app/setup.sh` - Automated setup script
-- `Makefile` - Updated with new commands for development
+- `app/README.md` - Docker-based quick start guide
+- `app/DEVELOPMENT.md` - Comprehensive Docker development guide
+- `app/setup.sh` - Automated Docker setup script
+- `Makefile` - Docker-based commands for development
+- `app/frontend/Dockerfile` - Frontend container
+- `app/backend/Dockerfile` - Backend container
+- `app/frontend/.dockerignore` - Frontend build optimization
+- `app/backend/.dockerignore` - Backend build optimization
 
 **Makefile Commands**:
-
 ```bash
-make up              # Start Docker services
-make setup           # Full setup (install dependencies)
-make dev-frontend    # Start frontend dev server
-make dev-backend     # Start backend dev server
+make setup           # Build images, start services, run migrations
+make up              # Start all services
+make down            # Stop all services
+make logs            # View all logs
+make logs-backend    # View backend logs
+make logs-frontend   # View frontend logs
+make restart         # Restart all services
 make test            # Run all tests
-make db-upgrade      # Apply database migrations
+make test-frontend   # Run frontend tests
+make test-backend    # Run backend tests
+make db-upgrade      # Apply migrations
+make db-migrate      # Create new migration
+make db-shell        # Access database shell
+make shell-backend   # Access backend container shell
+make shell-frontend  # Access frontend container shell
 ```
 
 ## Project Structure
@@ -124,6 +151,8 @@ app/
 │   │   ├── main.tsx            # Entry point
 │   │   ├── index.css           # Global styles
 │   │   └── setupTests.ts       # Test setup
+│   ├── Dockerfile              # Frontend Docker image
+│   ├── .dockerignore           # Docker build optimization
 │   ├── package.json
 │   ├── tsconfig.json
 │   ├── vite.config.ts
@@ -149,43 +178,69 @@ app/
 │   │   └── script.py.mako
 │   ├── tests/
 │   │   └── test_main.py
+│   ├── Dockerfile              # Backend Docker image
+│   ├── .dockerignore           # Docker build optimization
 │   ├── requirements.txt
 │   ├── pyproject.toml
-│   ├── alembic.ini
-│   └── .env.example
+│   └── alembic.ini
 │
 ├── README.md
 ├── DEVELOPMENT.md
 └── setup.sh
 ```
 
-## Next Steps
+## Quick Start with Docker
 
-1. Start the database: `make up`
-2. Install dependencies: `make setup`
-3. Apply migrations: `make db-upgrade`
-4. Start development servers:
-   - Frontend: `make dev-frontend`
-   - Backend: `make dev-backend`
-
-5. Proceed to **Task 2**: Backend user authentication system implementation
-
-## Verification
-
-All basic tests are in place:
-
-- Frontend: `app/frontend/src/App.test.tsx`
-- Backend: `app/backend/tests/test_main.py`
-
-Run tests with:
+### 1. Setup Everything
 
 ```bash
-cd app/frontend && npm test
-cd app/backend && source venv/bin/activate && pytest
+make setup
 ```
+
+This will:
+- Build all Docker images
+- Start PostgreSQL, Redis, Backend, and Frontend
+- Run database migrations
+
+### 2. Access Services
+
+- Frontend: <http://localhost:3000>
+- Backend: <http://localhost:8000>
+- API Docs: <http://localhost:8000/docs>
+
+### 3. View Logs
+
+```bash
+make logs              # All services
+make logs-backend      # Backend only
+make logs-frontend     # Frontend only
+```
+
+### 4. Run Tests
+
+```bash
+make test              # All tests
+make test-frontend     # Frontend tests
+make test-backend      # Backend tests
+```
+
+## Docker Benefits
+
+✅ **No Local Dependencies**: No need to install Node.js or Python locally
+✅ **Consistent Environment**: Same setup for all developers
+✅ **Hot Reload**: Code changes reflect immediately
+✅ **Easy Cleanup**: `make down` stops everything
+✅ **Isolated Services**: Each service in its own container
+✅ **Production-Ready**: Same images can be used in production
+
+## Next Steps
+
+1. Start services: `make setup`
+2. Verify everything works: `make test`
+3. Proceed to **Task 2**: Backend user authentication system implementation
 
 ---
 
-**Status**: ✅ Task 1 Complete
+**Status**: ✅ Task 1 Complete (with full Docker support)
 
 **Requirements Covered**: 全体 (Overall project structure)
