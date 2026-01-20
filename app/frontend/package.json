@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "jest --run",
+    "test": "jest",
     "test:watch": "jest --watch"
   },
   "dependencies": {
