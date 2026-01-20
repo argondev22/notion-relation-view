@@ -2,10 +2,12 @@
 Tests for Auth Service
 """
 import pytest
+import uuid
 from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from jose import jwt
+from hypothesis import given, strategies as st
 
 from app.database import Base
 from app.models.user import User
@@ -386,3 +388,171 @@ class TestAuthServiceSingleton:
         """Test that auth_service singleton is available"""
         assert auth_service is not None
         assert isinstance(auth_service, AuthService)
+
+
+class TestPropertyBasedTokenRoundtrip:
+    """
+    Property-Based Tests for Auth Service
+
+    Feature: notion-relation-view
+    Property 16: トークン保存のラウンドトリップ
+
+    **Validates: Requirements 6.1**
+
+    任意のAPIトークン文字列に対して、バックエンドのデータベースに暗号化して保存してから取得すると、
+    復号化後に同じトークン文字列が返される
+    """
+
+    @given(st.text(min_size=1, max_size=500))
+    def test_token_save_retrieve_roundtrip(self, token_string):
+        """
+        Property 16: Token Save/Retrieve Round-trip
+
+        For any arbitrary token string, when we:
+        1. Save it to the database (encrypted)
+        2. Retrieve it from the database
+
+        Then the retrieved token should be identical to the original token.
+
+        This property validates that the encryption/decryption and database
+        storage/retrieval operations are inverse operations that preserve
+        the original token value.
+        """
+        # Setup: Create in-memory database and auth service
+        engine = create_engine("sqlite:///:memory:")
+        User.__table__.create(engine, checkfirst=True)
+        NotionToken.__table__.create(engine, checkfirst=True)
+        Session = sessionmaker(bind=engine)
+        db_session = Session()
+
+        auth_svc = AuthService()
+
+        try:
+            # Create a test user with a simple short password
+            # Use UUID to generate unique email
+            unique_id = str(uuid.uuid4())[:8]
+            user = auth_svc.register(
+                db_session,
+                f"test{unique_id}@example.com",
+                "testpass"
+            )
+
+            # Save the token
+            auth_svc.save_notion_token(db_session, str(user.id), token_string)
+
+            # Retrieve the token
+            retrieved_token = auth_svc.get_notion_token(db_session, str(user.id))
+
+            # Property: Retrieved token must equal original token
+            assert retrieved_token == token_string, (
+                f"Token round-trip failed: expected '{token_string}', "
+                f"got '{retrieved_token}'"
+            )
+
+        finally:
+            db_session.close()
+
+    @given(st.text(min_size=1, max_size=500))
+    def test_token_update_roundtrip(self, new_token):
+        """
+        Property 16 (Update variant): Token Update Round-trip
+
+        For any arbitrary token string, when we:
+        1. Save an initial token
+        2. Update it with a new token
+        3. Retrieve it from the database
+
+        Then the retrieved token should be identical to the new token,
+        not the old one.
+        """
+        # Setup: Create in-memory database and auth service
+        engine = create_engine("sqlite:///:memory:")
+        User.__table__.create(engine, checkfirst=True)
+        NotionToken.__table__.create(engine, checkfirst=True)
+        Session = sessionmaker(bind=engine)
+        db_session = Session()
+
+        auth_svc = AuthService()
+
+        try:
+            # Create a test user with a simple short password
+            # Use UUID to generate unique email
+            unique_id = str(uuid.uuid4())[:8]
+            user = auth_svc.register(
+                db_session,
+                f"test{unique_id}@example.com",
+                "testpass"
+            )
+
+            # Save initial token
+            initial_token = "initial_token_value"
+            auth_svc.save_notion_token(db_session, str(user.id), initial_token)
+
+            # Update with new token
+            auth_svc.save_notion_token(db_session, str(user.id), new_token)
+
+            # Retrieve the token
+            retrieved_token = auth_svc.get_notion_token(db_session, str(user.id))
+
+            # Property: Retrieved token must equal the new token
+            assert retrieved_token == new_token, (
+                f"Token update round-trip failed: expected '{new_token}', "
+                f"got '{retrieved_token}'"
+            )
+
+            # Property: Retrieved token must NOT equal the old token
+            assert retrieved_token != initial_token, (
+                f"Token was not updated: still equals initial token '{initial_token}'"
+            )
+
+        finally:
+            db_session.close()
+
+    @given(st.lists(st.text(min_size=1, max_size=200), min_size=1, max_size=10))
+    def test_multiple_token_updates_roundtrip(self, token_sequence):
+        """
+        Property 16 (Multiple updates variant): Multiple Token Updates Round-trip
+
+        For any sequence of token strings, when we:
+        1. Save each token in sequence (updating the previous one)
+        2. Retrieve the token after all updates
+
+        Then the retrieved token should be identical to the last token
+        in the sequence.
+        """
+        # Setup: Create in-memory database and auth service
+        engine = create_engine("sqlite:///:memory:")
+        User.__table__.create(engine, checkfirst=True)
+        NotionToken.__table__.create(engine, checkfirst=True)
+        Session = sessionmaker(bind=engine)
+        db_session = Session()
+
+        auth_svc = AuthService()
+
+        try:
+            # Create a test user with a simple short password
+            # Use UUID to generate unique email
+            unique_id = str(uuid.uuid4())[:8]
+            user = auth_svc.register(
+                db_session,
+                f"test{unique_id}@example.com",
+                "testpass"
+            )
+
+            # Save each token in sequence
+            for token in token_sequence:
+                auth_svc.save_notion_token(db_session, str(user.id), token)
+
+            # Retrieve the final token
+            retrieved_token = auth_svc.get_notion_token(db_session, str(user.id))
+
+            # Property: Retrieved token must equal the last token in sequence
+            expected_token = token_sequence[-1]
+            assert retrieved_token == expected_token, (
+                f"Multiple updates round-trip failed: expected '{expected_token}', "
+                f"got '{retrieved_token}'"
+            )
+
+        finally:
+            db_session.close()
+
