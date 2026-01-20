@@ -50,7 +50,7 @@ cp .env.example .env
 
 **Important**: Change `JWT_SECRET` and `ENCRYPTION_KEY` in production!
 
-3. Run the setup script:
+1. Run the setup script:
 
 ```bash
 chmod +x setup.sh
@@ -64,6 +64,7 @@ make setup
 ```
 
 This will:
+
 - Create `.env` file if it doesn't exist
 - Build all Docker images
 - Start PostgreSQL, Redis, Backend, and Frontend services
@@ -90,6 +91,7 @@ cp .env.example .env
 ### Environment Variables by Service
 
 #### PostgreSQL (postgres service)
+
 ```env
 POSTGRES_USER=postgres              # PostgreSQL username
 POSTGRES_PASSWORD=postgres          # PostgreSQL password
@@ -97,6 +99,7 @@ POSTGRES_DB=notion_relation_view    # Database name
 ```
 
 #### Backend (backend service)
+
 ```env
 # Database connection
 DATABASE_URL=postgresql://postgres:postgres@postgres:5432/notion_relation_view
@@ -117,11 +120,13 @@ FRONTEND_URL=http://localhost:3000
 ```
 
 #### Frontend (frontend service)
+
 ```env
 VITE_API_URL=http://localhost:8000    # Backend API URL
 ```
 
 **Security Note**:
+
 - The `.env` file is gitignored and will NOT be committed
 - `docker-compose.yml` is safely committed to Git
 - Always change `JWT_SECRET` and `ENCRYPTION_KEY` in production!

@@ -1,4 +1,4 @@
-import React from 'react'
+import React from "react";
 
 function App() {
   return (
@@ -6,7 +6,7 @@ function App() {
       <h1>Notion Relation View</h1>
       <p>Welcome to Notion Relation View</p>
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

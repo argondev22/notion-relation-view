@@ -9,12 +9,14 @@ All components have been successfully set up with **full Docker support**:
 **Location**: `app/frontend/`
 
 **Docker Configuration**:
+
 - `Dockerfile` - Node 20 Alpine image with hot-reload
 - `.dockerignore` - Optimized build context
 - Port: 3000
 - Volume mount for live code updates
 
 **Key Files**:
+
 - `package.json` - Dependencies: React 18, TypeScript, Vite, Jest, fast-check
 - `tsconfig.json` - TypeScript configuration with strict mode
 - `vite.config.ts` - Vite configuration with proxy to backend
@@ -32,12 +34,14 @@ All components have been successfully set up with **full Docker support**:
 **Location**: `app/backend/`
 
 **Docker Configuration**:
+
 - `Dockerfile` - Python 3.11 slim image with hot-reload
 - `.dockerignore` - Optimized build context
 - Port: 8000
 - Volume mount for live code updates
 
 **Key Files**:
+
 - `requirements.txt` - Dependencies: FastAPI, SQLAlchemy, Alembic, pytest, hypothesis
 - `pyproject.toml` - pytest configuration
 - `app/main.py` - FastAPI application with CORS
@@ -54,6 +58,7 @@ All components have been successfully set up with **full Docker support**:
 **Location**: `app/backend/migrations/`
 
 **Tables Defined**:
+
 1. **users** - User accounts with email and password
 2. **notion_tokens** - Encrypted Notion API tokens per user
 3. **views** - Saved view configurations with database filters and settings
@@ -61,6 +66,7 @@ All components have been successfully set up with **full Docker support**:
 **Migration**: `migrations/versions/001_initial_migration.py`
 
 **Commands**:
+
 ```bash
 make db-upgrade      # Apply migrations
 make db-downgrade    # Rollback
@@ -71,6 +77,7 @@ make db-downgrade    # Rollback
 **Location**: `docker-compose.yml`
 
 **Services**:
+
 - **postgres** - PostgreSQL 16 on port 5432
 - **redis** - Redis 7 on port 6379 (for caching)
 - **backend** - FastAPI application on port 8000 (Dockerized)
@@ -79,11 +86,13 @@ make db-downgrade    # Rollback
 **Network**: All services on `app-network` bridge network
 
 **Volumes**:
+
 - `postgres_data` - Persistent database
 - `redis_data` - Persistent cache
 - Frontend/Backend source code mounted for hot-reload
 
 **Commands**:
+
 ```bash
 make setup           # Build and start all services
 make up              # Start services
@@ -95,6 +104,7 @@ make restart         # Restart services
 ### ✅ Test Frameworks
 
 **Frontend**:
+
 - Jest 29 with ts-jest
 - React Testing Library
 - fast-check for property-based testing
@@ -102,6 +112,7 @@ make restart         # Restart services
 - Run: `make test-frontend`
 
 **Backend**:
+
 - pytest with pytest-asyncio
 - hypothesis for property-based testing
 - Coverage tracking configured
@@ -110,6 +121,7 @@ make restart         # Restart services
 ### ✅ Additional Setup
 
 **Files Created**:
+
 - `app/README.md` - Docker-based quick start guide
 - `app/DEVELOPMENT.md` - Comprehensive Docker development guide
 - `app/setup.sh` - Automated Docker setup script
@@ -120,6 +132,7 @@ make restart         # Restart services
 - `app/backend/.dockerignore` - Backend build optimization
 
 **Makefile Commands**:
+
 ```bash
 make setup           # Build images, start services, run migrations
 make up              # Start all services
@@ -198,6 +211,7 @@ make setup
 ```
 
 This will:
+
 - Build all Docker images
 - Start PostgreSQL, Redis, Backend, and Frontend
 - Run database migrations

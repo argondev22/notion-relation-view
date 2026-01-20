@@ -7,6 +7,7 @@
 All three database models have been successfully implemented with SQLAlchemy:
 
 #### 1. User Model (`app/backend/app/models/user.py`)
+
 - ✅ UUID primary key with auto-generation
 - ✅ Email field (unique, indexed, max 255 chars)
 - ✅ Password hash field (max 255 chars)
@@ -16,6 +17,7 @@ All three database models have been successfully implemented with SQLAlchemy:
 - ✅ Relationship to Views (one-to-many, cascade delete)
 
 #### 2. NotionToken Model (`app/backend/app/models/notion_token.py`)
+
 - ✅ User_id as primary key and foreign key
 - ✅ Encrypted_token field (text)
 - ✅ Created_at timestamp (auto-generated)
@@ -24,6 +26,7 @@ All three database models have been successfully implemented with SQLAlchemy:
 - ✅ Relationship back to User
 
 #### 3. View Model (`app/backend/app/models/view.py`)
+
 - ✅ UUID primary key with auto-generation
 - ✅ User_id foreign key
 - ✅ Name field (max 255 chars)
@@ -64,6 +67,7 @@ All SQLAlchemy relationships have been properly configured:
 ### Migration
 
 The initial migration file (`001_initial_migration.py`) already exists and includes:
+
 - ✅ Users table creation
 - ✅ NotionTokens table creation
 - ✅ Views table creation
@@ -86,10 +90,12 @@ Comprehensive unit tests have been created in `tests/test_models.py`:
 ### Requirements Validation
 
 **Requirement 6.1**: ユーザーがAPIトークンを入力する → トークンを安全にサーバーに保存する
+
 - ✅ NotionToken model with encrypted_token field
 - ✅ Foreign key relationship to User
 
 **Requirement 6.3**: ユーザーがビュー設定を作成する → ビュー名、選択されたデータベース、ズームレベル、パン位置を保存し、一意のビューIDを生成する
+
 - ✅ View model with all required fields
 - ✅ UUID auto-generation for unique view IDs
 - ✅ Database_ids array for multiple database selection

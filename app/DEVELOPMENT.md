@@ -34,6 +34,7 @@ make setup
 ```
 
 This will:
+
 - Create `.env` file if it doesn't exist
 - Build all Docker images
 - Start PostgreSQL, Redis, Backend, and Frontend
@@ -77,6 +78,7 @@ make logs-frontend
 All environment variables are configured in a single `app/.env` file, organized by service:
 
 ### PostgreSQL (postgres service)
+
 ```env
 POSTGRES_USER=postgres              # PostgreSQL username
 POSTGRES_PASSWORD=postgres          # PostgreSQL password
@@ -84,6 +86,7 @@ POSTGRES_DB=notion_relation_view    # Database name
 ```
 
 ### Backend (backend service)
+
 ```env
 # Database connection
 DATABASE_URL=postgresql://postgres:postgres@postgres:5432/notion_relation_view
@@ -104,11 +107,13 @@ FRONTEND_URL=http://localhost:3000
 ```
 
 ### Frontend (frontend service)
+
 ```env
 VITE_API_URL=http://localhost:8000    # Backend API URL
 ```
 
 **Important Notes**:
+
 - Copy `.env.example` to `.env` before starting
 - The `.env` file is gitignored (not committed to Git)
 - `docker-compose.yml` is safely committed to Git
@@ -151,10 +156,12 @@ VITE_API_URL=http://localhost:8000    # Backend API URL
 All code changes are automatically reflected due to volume mounts:
 
 **Frontend**:
+
 - Edit files in `app/frontend/src/`
 - Vite will hot-reload automatically
 
 **Backend**:
+
 - Edit files in `app/backend/app/`
 - Uvicorn will reload automatically
 
@@ -212,43 +219,47 @@ cd app && docker compose exec frontend /bin/sh
 # or from project root
 make shell-frontend
 ```
+
 make shell-frontend
 docker compose exec frontend /bin/sh
+
 ```
 
 ## Project Structure
 
 ```
+
 app/
 ├── frontend/
-│   ├── src/
-│   │   ├── api/           # API client
-│   │   ├── components/    # React components
-│   │   ├── types/         # TypeScript types
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── Dockerfile         # Frontend Docker image
-│   ├── .dockerignore
-│   ├── package.json
-│   ├── tsconfig.json
-│   ├── vite.config.ts
-│   └── jest.config.js
+│ ├── src/
+│ │ ├── api/ # API client
+│ │ ├── components/ # React components
+│ │ ├── types/ # TypeScript types
+│ │ ├── App.tsx
+│ │ └── main.tsx
+│ ├── Dockerfile # Frontend Docker image
+│ ├── .dockerignore
+│ ├── package.json
+│ ├── tsconfig.json
+│ ├── vite.config.ts
+│ └── jest.config.js
 │
 └── backend/
-    ├── app/
-    │   ├── models/        # SQLAlchemy models
-    │   ├── routers/       # API endpoints
-    │   ├── schemas/       # Pydantic schemas
-    │   ├── services/      # Business logic
-    │   ├── main.py
-    │   ├── config.py
-    │   └── database.py
-    ├── migrations/        # Alembic migrations
-    ├── tests/
-    ├── Dockerfile         # Backend Docker image
-    ├── .dockerignore
-    └── requirements.txt
-```
+├── app/
+│ ├── models/ # SQLAlchemy models
+│ ├── routers/ # API endpoints
+│ ├── schemas/ # Pydantic schemas
+│ ├── services/ # Business logic
+│ ├── main.py
+│ ├── config.py
+│ └── database.py
+├── migrations/ # Alembic migrations
+├── tests/
+├── Dockerfile # Backend Docker image
+├── .dockerignore
+└── requirements.txt
+
+````
 
 ## Environment Variables
 
@@ -279,7 +290,7 @@ FRONTEND_URL=http://localhost:3000
 
 # Frontend
 VITE_API_URL=http://localhost:8000
-```
+````
 
 **Setup**:
 
@@ -290,6 +301,7 @@ cp .env.example .env
 ```
 
 **Why this approach?**
+
 - ✅ Simple: All config in one place
 - ✅ Safe: `.env` is gitignored, `docker-compose.yml` is committed
 - ✅ Standard: Docker Compose automatically reads `.env`
