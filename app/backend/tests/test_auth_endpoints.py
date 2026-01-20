@@ -3,51 +3,12 @@ Unit tests for authentication API endpoints.
 Tests cover registration, login, logout, and user info retrieval.
 """
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from app.main import app
-from app.database import get_db, Base
-from app.models.user import User
-from app.models.notion_token import NotionToken
-
-
-# Create in-memory SQLite database for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    """Override database dependency for testing."""
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-# Override the database dependency
-app.dependency_overrides[get_db] = override_get_db
-
-# Create test client
-client = TestClient(app)
-
-
-@pytest.fixture(autouse=True)
-def setup_database():
-    """Create and drop database tables for each test."""
-    # Create all tables
-    Base.metadata.create_all(bind=engine)
-    yield
-    # Drop all tables after test
-    Base.metadata.drop_all(bind=engine)
 
 
 class TestUserRegistration:
     """Tests for POST /api/auth/register endpoint."""
 
-    def test_register_success(self):
+    def test_register_success(self, client):
         """Test successful user registration."""
         response = client.post(
             "/api/auth/register",
@@ -66,7 +27,7 @@ class TestUserRegistration:
         assert "updated_at" in data["user"]
         assert data["error"] is None
 
-    def test_register_duplicate_email(self):
+    def test_register_duplicate_email(self, client):
         """Test registration with duplicate email fails."""
         # Register first user
         client.post(
@@ -89,7 +50,7 @@ class TestUserRegistration:
         assert response.status_code == 400
         assert "already exists" in response.json()["detail"].lower()
 
-    def test_register_invalid_email(self):
+    def test_register_invalid_email(self, client):
         """Test registration with invalid email format."""
         response = client.post(
             "/api/auth/register",
@@ -101,7 +62,7 @@ class TestUserRegistration:
 
         assert response.status_code == 422  # Validation error
 
-    def test_register_missing_password(self):
+    def test_register_missing_password(self, client):
         """Test registration without password."""
         response = client.post(
             "/api/auth/register",
@@ -116,7 +77,7 @@ class TestUserRegistration:
 class TestUserLogin:
     """Tests for POST /api/auth/login endpoint."""
 
-    def test_login_success(self):
+    def test_login_success(self, client):
         """Test successful user login."""
         # Register user first
         client.post(
@@ -147,7 +108,7 @@ class TestUserLogin:
         # Check that session cookie is set
         assert "session_token" in response.cookies
 
-    def test_login_invalid_email(self):
+    def test_login_invalid_email(self, client):
         """Test login with non-existent email."""
         response = client.post(
             "/api/auth/login",
@@ -160,7 +121,7 @@ class TestUserLogin:
         assert response.status_code == 401
         assert "invalid" in response.json()["detail"].lower()
 
-    def test_login_invalid_password(self):
+    def test_login_invalid_password(self, client):
         """Test login with incorrect password."""
         # Register user first
         client.post(
@@ -183,7 +144,7 @@ class TestUserLogin:
         assert response.status_code == 401
         assert "invalid" in response.json()["detail"].lower()
 
-    def test_login_missing_credentials(self):
+    def test_login_missing_credentials(self, client):
         """Test login without credentials."""
         response = client.post(
             "/api/auth/login",
@@ -196,7 +157,7 @@ class TestUserLogin:
 class TestUserLogout:
     """Tests for POST /api/auth/logout endpoint."""
 
-    def test_logout_success(self):
+    def test_logout_success(self, client):
         """Test successful user logout."""
         # Register and login
         client.post(
@@ -229,14 +190,14 @@ class TestUserLogout:
         assert data["success"] is True
         assert "logged out" in data["message"].lower()
 
-    def test_logout_without_session(self):
+    def test_logout_without_session(self, client):
         """Test logout without session token."""
         response = client.post("/api/auth/logout")
 
         assert response.status_code == 401
         assert "not authenticated" in response.json()["detail"].lower()
 
-    def test_logout_with_invalid_token(self):
+    def test_logout_with_invalid_token(self, client):
         """Test logout with invalid session token."""
         response = client.post(
             "/api/auth/logout",
@@ -249,7 +210,7 @@ class TestUserLogout:
 class TestGetCurrentUser:
     """Tests for GET /api/auth/me endpoint."""
 
-    def test_get_current_user_success(self):
+    def test_get_current_user_success(self, client):
         """Test getting current user information."""
         # Register and login
         client.post(
@@ -283,14 +244,14 @@ class TestGetCurrentUser:
         assert "created_at" in data
         assert "updated_at" in data
 
-    def test_get_current_user_without_session(self):
+    def test_get_current_user_without_session(self, client):
         """Test getting current user without session token."""
         response = client.get("/api/auth/me")
 
         assert response.status_code == 401
         assert "not authenticated" in response.json()["detail"].lower()
 
-    def test_get_current_user_with_invalid_token(self):
+    def test_get_current_user_with_invalid_token(self, client):
         """Test getting current user with invalid token."""
         response = client.get(
             "/api/auth/me",
@@ -299,7 +260,7 @@ class TestGetCurrentUser:
 
         assert response.status_code == 401
 
-    def test_get_current_user_with_expired_token(self):
+    def test_get_current_user_with_expired_token(self, client):
         """Test getting current user with expired token (simulated)."""
         # This would require mocking JWT expiration
         # For now, we test with a malformed token
@@ -314,7 +275,7 @@ class TestGetCurrentUser:
 class TestInvalidLoginErrorHandling:
     """Tests for invalid login information error handling (Requirement 1.3, 7.3)."""
 
-    def test_login_with_empty_email(self):
+    def test_login_with_empty_email(self, client):
         """Test login with empty email returns validation error."""
         response = client.post(
             "/api/auth/login",
@@ -326,7 +287,7 @@ class TestInvalidLoginErrorHandling:
 
         assert response.status_code == 422  # Validation error
 
-    def test_login_with_empty_password(self):
+    def test_login_with_empty_password(self, client):
         """Test login with empty password returns validation or auth error."""
         response = client.post(
             "/api/auth/login",
@@ -339,7 +300,7 @@ class TestInvalidLoginErrorHandling:
         # Empty password may pass validation but fail authentication
         assert response.status_code in [401, 422]
 
-    def test_login_with_malformed_email(self):
+    def test_login_with_malformed_email(self, client):
         """Test login with malformed email format."""
         response = client.post(
             "/api/auth/login",
@@ -352,7 +313,7 @@ class TestInvalidLoginErrorHandling:
         # Should return 422 for validation error or 401 if validation passes but user not found
         assert response.status_code in [401, 422]
 
-    def test_login_with_sql_injection_attempt(self):
+    def test_login_with_sql_injection_attempt(self, client):
         """Test that SQL injection attempts in login are handled safely."""
         response = client.post(
             "/api/auth/login",
@@ -367,7 +328,7 @@ class TestInvalidLoginErrorHandling:
         if response.status_code == 401:
             assert "invalid" in response.json()["detail"].lower()
 
-    def test_login_with_very_long_email(self):
+    def test_login_with_very_long_email(self, client):
         """Test login with excessively long email."""
         long_email = "a" * 1000 + "@example.com"
         response = client.post(
@@ -381,7 +342,7 @@ class TestInvalidLoginErrorHandling:
         # Should handle gracefully with 401 or 422
         assert response.status_code in [401, 422]
 
-    def test_login_with_very_long_password(self):
+    def test_login_with_very_long_password(self, client):
         """Test login with excessively long password."""
         response = client.post(
             "/api/auth/login",
@@ -394,7 +355,7 @@ class TestInvalidLoginErrorHandling:
         # Should handle gracefully with 401 or 422
         assert response.status_code in [401, 422]
 
-    def test_login_error_message_does_not_leak_user_existence(self):
+    def test_login_error_message_does_not_leak_user_existence(self, client):
         """Test that error messages don't reveal whether user exists."""
         # Try to login with non-existent user
         response1 = client.post(
@@ -429,7 +390,7 @@ class TestInvalidLoginErrorHandling:
         # Error messages should be generic and not reveal user existence
         assert response1.json()["detail"] == response2.json()["detail"]
 
-    def test_multiple_failed_login_attempts(self):
+    def test_multiple_failed_login_attempts(self, client):
         """Test multiple failed login attempts are handled correctly."""
         # Register a user
         client.post(
@@ -466,7 +427,7 @@ class TestInvalidLoginErrorHandling:
 class TestSessionExpiration:
     """Tests for session expiration handling (Requirement 1.3, 7.3)."""
 
-    def test_expired_token_rejected(self):
+    def test_expired_token_rejected(self, client):
         """Test that expired JWT tokens are rejected."""
         from datetime import datetime, timedelta
         from jose import jwt
@@ -490,7 +451,7 @@ class TestSessionExpiration:
         assert response.status_code == 401
         assert "invalid" in response.json()["detail"].lower() or "expired" in response.json()["detail"].lower()
 
-    def test_malformed_token_rejected(self):
+    def test_malformed_token_rejected(self, client):
         """Test that malformed JWT tokens are rejected."""
         malformed_tokens = [
             "not.a.token",
@@ -507,7 +468,7 @@ class TestSessionExpiration:
             )
             assert response.status_code == 401
 
-    def test_token_with_invalid_signature_rejected(self):
+    def test_token_with_invalid_signature_rejected(self, client):
         """Test that tokens with invalid signatures are rejected."""
         from datetime import datetime, timedelta
         from jose import jwt
@@ -529,7 +490,7 @@ class TestSessionExpiration:
 
         assert response.status_code == 401
 
-    def test_token_without_required_claims_rejected(self):
+    def test_token_without_required_claims_rejected(self, client):
         """Test that tokens missing required claims are rejected."""
         from datetime import datetime, timedelta
         from jose import jwt
@@ -550,7 +511,7 @@ class TestSessionExpiration:
 
         assert response.status_code == 401
 
-    def test_token_with_future_issued_time_rejected(self):
+    def test_token_with_future_issued_time_rejected(self, client):
         """Test that tokens with future 'iat' (issued at) are handled gracefully."""
         from datetime import datetime, timedelta
         from jose import jwt
@@ -586,7 +547,7 @@ class TestSessionExpiration:
         # At minimum, it should not crash the application
         assert response.status_code in [200, 401]
 
-    def test_logout_with_expired_token(self):
+    def test_logout_with_expired_token(self, client):
         """Test logout with expired token."""
         from datetime import datetime, timedelta
         from jose import jwt
@@ -610,7 +571,7 @@ class TestSessionExpiration:
         # Should reject expired token
         assert response.status_code == 401
 
-    def test_session_token_not_in_response_body(self):
+    def test_session_token_not_in_response_body(self, client):
         """Test that session token is only in cookie, not response body."""
         # Register and login
         client.post(
@@ -640,7 +601,7 @@ class TestSessionExpiration:
 class TestSessionManagement:
     """Tests for session management and edge cases."""
 
-    def test_session_persists_across_requests(self):
+    def test_session_persists_across_requests(self, client):
         """Test that session token works across multiple requests."""
         # Register and login
         client.post(
@@ -670,7 +631,7 @@ class TestSessionManagement:
             assert response.status_code == 200
             assert response.json()["email"] == "persistent@example.com"
 
-    def test_cannot_access_protected_route_after_logout(self):
+    def test_cannot_access_protected_route_after_logout(self, client):
         """Test that protected routes are inaccessible after logout."""
         # Register and login
         client.post(

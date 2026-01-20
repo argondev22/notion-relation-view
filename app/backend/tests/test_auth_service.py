@@ -7,13 +7,13 @@ from datetime import datetime, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from jose import jwt
-from hypothesis import given, strategies as st
+from hypothesis import given, strategies as st, settings
 
 from app.database import Base
 from app.models.user import User
 from app.models.notion_token import NotionToken
 from app.services.auth_service import AuthService, auth_service
-from app.config import settings
+from app.config import settings as app_settings
 
 
 @pytest.fixture
@@ -164,8 +164,8 @@ class TestUserLogin:
         # Decode token to verify contents
         payload = jwt.decode(
             result["token"],
-            settings.JWT_SECRET,
-            algorithms=[settings.JWT_ALGORITHM]
+            app_settings.JWT_SECRET,
+            algorithms=[app_settings.JWT_ALGORITHM]
         )
 
         assert payload["sub"] == str(user.id)
@@ -208,7 +208,7 @@ class TestSessionValidation:
             "email": "test@example.com",
             "exp": expired_time
         }
-        expired_token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+        expired_token = jwt.encode(payload, app_settings.JWT_SECRET, algorithm=app_settings.JWT_ALGORITHM)
 
         with pytest.raises(ValueError, match="Invalid or expired token"):
             auth_svc.validate_session(expired_token)
@@ -217,7 +217,7 @@ class TestSessionValidation:
         """Test validating a token with missing payload fields"""
         # Create token without required fields
         payload = {"exp": datetime.utcnow() + timedelta(minutes=10)}
-        token = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
+        token = jwt.encode(payload, app_settings.JWT_SECRET, algorithm=app_settings.JWT_ALGORITHM)
 
         with pytest.raises(ValueError, match="Invalid token payload"):
             auth_svc.validate_session(token)
@@ -404,6 +404,7 @@ class TestPropertyBasedTokenRoundtrip:
     """
 
     @given(st.text(min_size=1, max_size=70))  # Limit to 70 bytes for bcrypt
+    @settings(deadline=None)  # Disable deadline for database operations
     def test_token_save_retrieve_roundtrip(self, token_string):
         """
         Property 16: Token Save/Retrieve Round-trip
@@ -453,6 +454,7 @@ class TestPropertyBasedTokenRoundtrip:
             db_session.close()
 
     @given(st.text(min_size=1, max_size=70))  # Limit to 70 bytes for bcrypt
+    @settings(deadline=None)  # Disable deadline for database operations
     def test_token_update_roundtrip(self, new_token):
         """
         Property 16 (Update variant): Token Update Round-trip
@@ -509,6 +511,7 @@ class TestPropertyBasedTokenRoundtrip:
             db_session.close()
 
     @given(st.lists(st.text(min_size=1, max_size=70), min_size=1, max_size=10))  # Limit to 70 bytes for bcrypt
+    @settings(deadline=None)  # Disable deadline for database operations
     def test_multiple_token_updates_roundtrip(self, token_sequence):
         """
         Property 16 (Multiple updates variant): Multiple Token Updates Round-trip

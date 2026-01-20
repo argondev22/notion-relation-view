@@ -8,54 +8,14 @@ Tests cover:
 - Token encryption validation
 """
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from unittest.mock import patch, AsyncMock, MagicMock
-
-from app.main import app
-from app.database import Base, get_db
+from unittest.mock import patch
+from .conftest import client, TestingSessionLocal
 from app.services.auth_service import auth_service
-from app.models.user import User
 from app.models.notion_token import NotionToken
 
 
-# Create test database (in-memory)
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
-engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-def override_get_db():
-    """Override database dependency for testing"""
-    try:
-        db = TestingSessionLocal()
-        yield db
-    finally:
-        db.close()
-
-
-app.dependency_overrides[get_db] = override_get_db
-
-
-@pytest.fixture(scope="function")
-def test_db():
-    """Create test database and tables"""
-    # Create all tables
-    Base.metadata.create_all(bind=engine)
-    yield
-    # Drop all tables after test
-    Base.metadata.drop_all(bind=engine)
-
-
 @pytest.fixture
-def client(test_db):
-    """Create test client"""
-    return TestClient(app)
-
-
-@pytest.fixture
-def test_user(test_db):
+def test_user():
     """Create a test user and return user with session token"""
     db = TestingSessionLocal()
 
