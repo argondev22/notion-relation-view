@@ -10,6 +10,14 @@ if ! docker info > /dev/null 2>&1; then
     exit 1
 fi
 
+# Check and create .env file
+if [ ! -f ".env" ]; then
+    echo "📝 Creating .env file from .env.example..."
+    cp .env.example .env
+    echo "⚠️  Please review and update .env file with your configuration."
+    echo "⚠️  IMPORTANT: Change JWT_SECRET and ENCRYPTION_KEY for production!"
+fi
+
 # Build and start all services
 echo "🐳 Building Docker images..."
 docker compose build
@@ -40,6 +48,9 @@ echo "  Backend:   http://localhost:8000"
 echo "  API Docs:  http://localhost:8000/docs"
 echo "  ReDoc:     http://localhost:8000/redoc"
 echo ""
+echo "📝 Configuration:"
+echo "  Edit app/.env to change settings"
+echo ""
 echo "📝 Useful commands:"
 echo "  make logs          - View all logs"
 echo "  make logs-backend  - View backend logs"
@@ -47,3 +58,6 @@ echo "  make logs-frontend - View frontend logs"
 echo "  make down          - Stop all services"
 echo "  make restart       - Restart all services"
 echo "  make test          - Run all tests"
+
+
+

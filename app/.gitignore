@@ -1,0 +1,6 @@
+# Environment variables (DO NOT commit .env file)
+.env
+
+# Docker volumes
+postgres_data/
+redis_data/

@@ -12,10 +12,18 @@ The project structure has been initialized with:
 
 ## Getting Started with Docker
 
-### 1. Start All Services
+### 1. Configure Environment
 
 ```bash
 cd app
+cp .env.example .env
+```
+
+Edit `.env` file with your configuration. **Important**: Change `JWT_SECRET` and `ENCRYPTION_KEY` in production!
+
+### 2. Start All Services
+
+```bash
 ./setup.sh
 ```
 
@@ -26,6 +34,7 @@ make setup
 ```
 
 This will:
+- Create `.env` file if it doesn't exist
 - Build all Docker images
 - Start PostgreSQL, Redis, Backend, and Frontend
 - Run database migrations
@@ -39,14 +48,14 @@ docker compose up -d
 docker compose exec backend alembic upgrade head
 ```
 
-### 2. Access Services
+### 3. Access Services
 
 - **Frontend**: <http://localhost:3000>
 - **Backend API**: <http://localhost:8000>
 - **API Docs**: <http://localhost:8000/docs>
 - **ReDoc**: <http://localhost:8000/redoc>
 
-### 3. View Logs
+### 4. View Logs
 
 ```bash
 cd app
@@ -62,6 +71,50 @@ make logs
 make logs-backend
 make logs-frontend
 ```
+
+## Environment Variables
+
+All environment variables are configured in a single `app/.env` file, organized by service:
+
+### PostgreSQL (postgres service)
+```env
+POSTGRES_USER=postgres              # PostgreSQL username
+POSTGRES_PASSWORD=postgres          # PostgreSQL password
+POSTGRES_DB=notion_relation_view    # Database name
+```
+
+### Backend (backend service)
+```env
+# Database connection
+DATABASE_URL=postgresql://postgres:postgres@postgres:5432/notion_relation_view
+
+# Redis connection
+REDIS_URL=redis://redis:6379
+
+# JWT authentication
+JWT_SECRET=dev-secret-key-change-in-production    # ⚠️ CHANGE IN PRODUCTION!
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_MINUTES=1440
+
+# Encryption for Notion API tokens
+ENCRYPTION_KEY=dev-encryption-key-change-in-production    # ⚠️ CHANGE IN PRODUCTION!
+
+# CORS configuration
+FRONTEND_URL=http://localhost:3000
+```
+
+### Frontend (frontend service)
+```env
+VITE_API_URL=http://localhost:8000    # Backend API URL
+```
+
+**Important Notes**:
+- Copy `.env.example` to `.env` before starting
+- The `.env` file is gitignored (not committed to Git)
+- `docker-compose.yml` is safely committed to Git
+- Docker Compose reads variables from `.env` automatically
+- Comments in `.env.example` show which service uses which variables
+- Always change `JWT_SECRET` and `ENCRYPTION_KEY` in production!
 
 ## Docker Services
 
@@ -199,25 +252,48 @@ app/
 
 ## Environment Variables
 
-Environment variables are configured in `docker-compose.yml`:
+Environment variables are configured in a single `app/.env` file:
 
-### Backend Environment
+```env
+# PostgreSQL
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=notion_relation_view
 
-```yaml
-DATABASE_URL: postgresql://postgres:postgres@postgres:5432/notion_relation_view
-REDIS_URL: redis://redis:6379
-FRONTEND_URL: http://localhost:3000
-JWT_SECRET: dev-secret-key-change-in-production
-JWT_ALGORITHM: HS256
-JWT_EXPIRATION_MINUTES: 1440
-ENCRYPTION_KEY: dev-encryption-key-change-in-production
+# Database URL
+DATABASE_URL=postgresql://postgres:postgres@postgres:5432/notion_relation_view
+
+# Redis
+REDIS_URL=redis://redis:6379
+
+# JWT
+JWT_SECRET=dev-secret-key-change-in-production
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_MINUTES=1440
+
+# Encryption
+ENCRYPTION_KEY=dev-encryption-key-change-in-production
+
+# CORS
+FRONTEND_URL=http://localhost:3000
+
+# Frontend
+VITE_API_URL=http://localhost:8000
 ```
 
-### Frontend Environment
+**Setup**:
 
-```yaml
-VITE_API_URL: http://localhost:8000
+```bash
+cd app
+cp .env.example .env
+# Edit .env with your configuration
 ```
+
+**Why this approach?**
+- ✅ Simple: All config in one place
+- ✅ Safe: `.env` is gitignored, `docker-compose.yml` is committed
+- ✅ Standard: Docker Compose automatically reads `.env`
+- ✅ Flexible: Default values in `docker-compose.yml` for missing variables
 
 ## Common Commands
 

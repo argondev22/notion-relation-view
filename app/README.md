@@ -40,10 +40,19 @@ app/
 
 1. Clone the repository and navigate to the app directory
 
-2. Run the setup script:
+2. Copy the environment file and configure it:
 
 ```bash
 cd app
+cp .env.example .env
+# Edit .env file with your configuration
+```
+
+**Important**: Change `JWT_SECRET` and `ENCRYPTION_KEY` in production!
+
+3. Run the setup script:
+
+```bash
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -55,6 +64,7 @@ make setup
 ```
 
 This will:
+- Create `.env` file if it doesn't exist
 - Build all Docker images
 - Start PostgreSQL, Redis, Backend, and Frontend services
 - Run database migrations
@@ -65,6 +75,56 @@ This will:
 - **Backend API**: <http://localhost:8000>
 - **API Documentation**: <http://localhost:8000/docs>
 - **ReDoc**: <http://localhost:8000/redoc>
+
+## Environment Configuration
+
+The application uses a single `.env` file in the `app/` directory for all configuration.
+
+Copy `.env.example` to `.env` and update the values:
+
+```bash
+cd app
+cp .env.example .env
+```
+
+### Environment Variables by Service
+
+#### PostgreSQL (postgres service)
+```env
+POSTGRES_USER=postgres              # PostgreSQL username
+POSTGRES_PASSWORD=postgres          # PostgreSQL password
+POSTGRES_DB=notion_relation_view    # Database name
+```
+
+#### Backend (backend service)
+```env
+# Database connection
+DATABASE_URL=postgresql://postgres:postgres@postgres:5432/notion_relation_view
+
+# Redis connection
+REDIS_URL=redis://redis:6379
+
+# JWT authentication
+JWT_SECRET=dev-secret-key-change-in-production    # ⚠️ CHANGE IN PRODUCTION!
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_MINUTES=1440
+
+# Encryption for Notion API tokens
+ENCRYPTION_KEY=dev-encryption-key-change-in-production    # ⚠️ CHANGE IN PRODUCTION!
+
+# CORS configuration
+FRONTEND_URL=http://localhost:3000
+```
+
+#### Frontend (frontend service)
+```env
+VITE_API_URL=http://localhost:8000    # Backend API URL
+```
+
+**Security Note**:
+- The `.env` file is gitignored and will NOT be committed
+- `docker-compose.yml` is safely committed to Git
+- Always change `JWT_SECRET` and `ENCRYPTION_KEY` in production!
 
 ## Development
 
