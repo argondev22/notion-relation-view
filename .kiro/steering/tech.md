@@ -57,6 +57,15 @@
 - **Docker** - Container runtime
 - **Docker Compose** - Multi-service orchestration
 
+## Development Environment
+
+**IMPORTANT**: All application execution, testing, and database operations run inside Docker containers. Never run commands directly on the host machine.
+
+- Backend runs in `backend` container
+- Frontend runs in `frontend` container
+- Database runs in `postgres` container
+- Use `make` commands or `docker compose exec` to interact with services
+
 ## Common Commands
 
 ### Project Setup
