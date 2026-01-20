@@ -403,7 +403,7 @@ class TestPropertyBasedTokenRoundtrip:
     復号化後に同じトークン文字列が返される
     """
 
-    @given(st.text(min_size=1, max_size=500))
+    @given(st.text(min_size=1, max_size=70))  # Limit to 70 bytes for bcrypt
     def test_token_save_retrieve_roundtrip(self, token_string):
         """
         Property 16: Token Save/Retrieve Round-trip
@@ -452,7 +452,7 @@ class TestPropertyBasedTokenRoundtrip:
         finally:
             db_session.close()
 
-    @given(st.text(min_size=1, max_size=500))
+    @given(st.text(min_size=1, max_size=70))  # Limit to 70 bytes for bcrypt
     def test_token_update_roundtrip(self, new_token):
         """
         Property 16 (Update variant): Token Update Round-trip
@@ -508,7 +508,7 @@ class TestPropertyBasedTokenRoundtrip:
         finally:
             db_session.close()
 
-    @given(st.lists(st.text(min_size=1, max_size=200), min_size=1, max_size=10))
+    @given(st.lists(st.text(min_size=1, max_size=70), min_size=1, max_size=10))  # Limit to 70 bytes for bcrypt
     def test_multiple_token_updates_roundtrip(self, token_sequence):
         """
         Property 16 (Multiple updates variant): Multiple Token Updates Round-trip

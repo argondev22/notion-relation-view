@@ -7,13 +7,13 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.main import app
-from app.database import get_db
+from app.database import get_db, Base
 from app.models.user import User
 from app.models.notion_token import NotionToken
 
 
 # Create in-memory SQLite database for testing
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test_auth.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -37,13 +37,11 @@ client = TestClient(app)
 @pytest.fixture(autouse=True)
 def setup_database():
     """Create and drop database tables for each test."""
-    # Only create tables needed for auth tests (User and NotionToken)
-    User.__table__.create(bind=engine, checkfirst=True)
-    NotionToken.__table__.create(bind=engine, checkfirst=True)
+    # Create all tables
+    Base.metadata.create_all(bind=engine)
     yield
-    # Drop tables after test
-    NotionToken.__table__.drop(bind=engine, checkfirst=True)
-    User.__table__.drop(bind=engine, checkfirst=True)
+    # Drop all tables after test
+    Base.metadata.drop_all(bind=engine)
 
 
 class TestUserRegistration:

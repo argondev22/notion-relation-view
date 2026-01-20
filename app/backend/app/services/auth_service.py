@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import base64
 import os
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives import hashes
@@ -17,8 +17,6 @@ from app.models.user import User
 from app.models.notion_token import NotionToken
 
 
-# Password hashing context using bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class AuthService:
@@ -60,18 +58,29 @@ class AuthService:
         """
         Hash a password using bcrypt with salt.
 
+        Note: bcrypt has a maximum password length of 72 bytes.
+        Passwords longer than this are truncated.
+
         Args:
             password: Plain text password
 
         Returns:
             Hashed password string
         """
-        return pwd_context.hash(password)
+        # Truncate password to 72 bytes (bcrypt limitation)
+        password_bytes = password.encode('utf-8')[:72]
+        # Generate salt and hash password
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password_bytes, salt)
+        return hashed.decode('utf-8')
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """
         Verify a password against its hash.
+
+        Note: bcrypt has a maximum password length of 72 bytes.
+        Passwords longer than this are truncated before verification.
 
         Args:
             plain_password: Plain text password to verify
@@ -80,7 +89,10 @@ class AuthService:
         Returns:
             True if password matches, False otherwise
         """
-        return pwd_context.verify(plain_password, hashed_password)
+        # Truncate password to 72 bytes (bcrypt limitation)
+        password_bytes = plain_password.encode('utf-8')[:72]
+        hashed_bytes = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
 
     def register(self, db: Session, email: str, password: str) -> User:
         """
@@ -274,9 +286,15 @@ class AuthService:
 
         Args:
             db: Database session
-            user_id: User ID
+            user_id: User ID (string or UUID)
             token: Plain text Notion API token
         """
+        import uuid as uuid_lib
+
+        # Convert user_id to UUID if it's a string
+        if isinstance(user_id, str):
+            user_id = uuid_lib.UUID(user_id)
+
         encrypted_token = self.encrypt_notion_token(token)
 
         # Check if token already exists
@@ -304,11 +322,17 @@ class AuthService:
 
         Args:
             db: Database session
-            user_id: User ID
+            user_id: User ID (string or UUID)
 
         Returns:
             Plain text Notion API token, or None if not found
         """
+        import uuid as uuid_lib
+
+        # Convert user_id to UUID if it's a string
+        if isinstance(user_id, str):
+            user_id = uuid_lib.UUID(user_id)
+
         notion_token = db.query(NotionToken).filter(
             NotionToken.user_id == user_id
         ).first()
