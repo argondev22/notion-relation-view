@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routers import auth, notion, graph
+from app.routers import auth, notion, graph, views
 
 app = FastAPI(
     title="Notion Relation View API",
@@ -22,6 +22,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(notion.router)
 app.include_router(graph.router)
+app.include_router(views.router)
 
 
 @app.get("/")
