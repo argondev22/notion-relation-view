@@ -2,8 +2,9 @@
 Graph Service for transforming Notion data into graph format.
 """
 import logging
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any, Set, Union
 from sqlalchemy.orm import Session
+from uuid import UUID
 
 from app.services.notion_client import notion_client, NotionAPIError
 from app.services.cache_manager import cache_manager
@@ -21,14 +22,14 @@ class GraphService:
     async def get_graph_data(
         self,
         db: Session,
-        user_id: str
+        user_id: Union[str, UUID]
     ) -> Dict[str, Any]:
         """
         Get graph data for a user, using cache if available.
 
         Args:
             db: Database session
-            user_id: User ID
+            user_id: User ID (string or UUID)
 
         Returns:
             Graph data with nodes, edges, and databases
@@ -54,7 +55,7 @@ class GraphService:
     async def _fetch_and_transform_data(
         self,
         db: Session,
-        user_id: str
+        user_id: Union[str, UUID]
     ) -> Dict[str, Any]:
         """
         Fetch data from Notion API and transform it into graph format.
@@ -203,14 +204,14 @@ class GraphService:
     async def get_databases(
         self,
         db: Session,
-        user_id: str
+        user_id: Union[str, UUID]
     ) -> List[Dict[str, Any]]:
         """
         Get list of databases for a user.
 
         Args:
             db: Database session
-            user_id: User ID
+            user_id: User ID (string or UUID)
 
         Returns:
             List of database objects

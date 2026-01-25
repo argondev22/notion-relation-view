@@ -74,7 +74,7 @@ async def get_graph_data(
     """
     try:
         # Get graph data (uses cache if available)
-        graph_data = await graph_service.get_graph_data(db, str(current_user.id))
+        graph_data = await graph_service.get_graph_data(db, current_user.id)
 
         return GraphDataResponse(
             nodes=graph_data["nodes"],
@@ -134,7 +134,7 @@ async def get_databases(
     """
     try:
         # Get databases
-        databases = await graph_service.get_databases(db, str(current_user.id))
+        databases = await graph_service.get_databases(db, current_user.id)
 
         return [DatabaseResponse(**db) for db in databases]
 
