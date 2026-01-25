@@ -26,5 +26,6 @@
   "json.validate.enable": true,
   "json.format.enable": true,
   "json.schemaDownload.enable": true,
-  "kiroAgent.configureMCP": "Enabled"
+  "kiroAgent.configureMCP": "Enabled",
+  "typescript.autoClosingTags": false
 }
