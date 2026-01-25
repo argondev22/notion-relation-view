@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { viewApi } from "../api/client";
+import { viewApi, notionApi } from "../api/client";
 import { View } from "../types";
 import LoadingSpinner from "./LoadingSpinner";
 import ErrorMessage from "./ErrorMessage";
+import NotionTokenForm from "./NotionTokenForm";
 
 interface ViewManagerProps {
   onViewSelect: (view: View) => void;
@@ -17,10 +18,30 @@ const ViewManager: React.FC<ViewManagerProps> = ({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [hasNotionToken, setHasNotionToken] = useState(false);
+  const [checkingToken, setCheckingToken] = useState(true);
 
   useEffect(() => {
+    checkNotionToken();
     loadViews();
   }, []);
+
+  const checkNotionToken = async () => {
+    try {
+      setCheckingToken(true);
+      await notionApi.verifyNotionToken();
+      setHasNotionToken(true);
+    } catch (err) {
+      setHasNotionToken(false);
+    } finally {
+      setCheckingToken(false);
+    }
+  };
+
+  const handleTokenSaved = () => {
+    setHasNotionToken(true);
+    loadViews();
+  };
 
   const loadViews = async () => {
     try {
@@ -55,8 +76,23 @@ const ViewManager: React.FC<ViewManagerProps> = ({
     alert("View URL copied to clipboard!");
   };
 
-  if (loading) {
+  if (loading || checkingToken) {
     return <LoadingSpinner message="Loading views..." />;
+  }
+
+  // Show Notion Token form if no token is saved
+  if (!hasNotionToken) {
+    return (
+      <div className="view-manager">
+        <div className="notion-token-section">
+          <h3>Connect to Notion</h3>
+          <p>
+            Please save your Notion Integration Token to start creating views.
+          </p>
+          <NotionTokenForm onSuccess={handleTokenSaved} />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -90,41 +126,46 @@ const ViewManager: React.FC<ViewManagerProps> = ({
             No views yet. Create your first view!
           </p>
         ) : (
-          views.map((view) => (
-            <div
-              key={view.id}
-              className={`view-item ${
-                currentViewId === view.id ? "active" : ""
-              }`}
-            >
-              <div className="view-info">
-                <h4>{view.name}</h4>
-                <p className="view-databases">
-                  {view.databaseIds.length} database(s)
-                </p>
+          views.map((view) => {
+            // Handle both camelCase and snake_case from backend
+            const databaseIds = (view as any).database_ids || view.databaseIds || [];
+
+            return (
+              <div
+                key={view.id}
+                className={`view-item ${
+                  currentViewId === view.id ? "active" : ""
+                }`}
+              >
+                <div className="view-info">
+                  <h4>{view.name}</h4>
+                  <p className="view-databases">
+                    {databaseIds.length} database(s)
+                  </p>
+                </div>
+                <div className="view-actions">
+                  <button
+                    onClick={() => onViewSelect(view)}
+                    className="select-button"
+                  >
+                    Open
+                  </button>
+                  <button
+                    onClick={() => handleCopyUrl(view)}
+                    className="copy-button"
+                  >
+                    Copy URL
+                  </button>
+                  <button
+                    onClick={() => handleDeleteView(view.id)}
+                    className="delete-button"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-              <div className="view-actions">
-                <button
-                  onClick={() => onViewSelect(view)}
-                  className="select-button"
-                >
-                  Open
-                </button>
-                <button
-                  onClick={() => handleCopyUrl(view)}
-                  className="copy-button"
-                >
-                  Copy URL
-                </button>
-                <button
-                  onClick={() => handleDeleteView(view.id)}
-                  className="delete-button"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
