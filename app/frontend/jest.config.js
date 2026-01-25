@@ -21,4 +21,7 @@ export default {
       statements: 80,
     },
   },
+  transformIgnorePatterns: [
+    "node_modules/(?!(react-router-dom)/)",
+  ],
 };

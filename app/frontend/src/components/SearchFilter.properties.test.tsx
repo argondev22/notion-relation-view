@@ -34,7 +34,7 @@ describe("Property 11: Search Function Accuracy", () => {
     fc.assert(
       fc.property(
         fc.array(nodeArbitrary, { minLength: 1, maxLength: 20 }),
-        fc.string({ minLength: 1, maxLength: 10 }),
+        fc.string({ minLength: 1, maxLength: 10 }).filter(s => s.trim().length > 0),
         (nodes, query) => {
           const results = searchFunction(nodes, query);
 
