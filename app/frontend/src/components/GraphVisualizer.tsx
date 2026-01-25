@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect, useState } from "react";
-import ForceGraph2D from "react-force-graph";
+import { ForceGraph2D } from "react-force-graph";
 import { GraphData, Node, Edge } from "../types";
 
 interface GraphVisualizerProps {
