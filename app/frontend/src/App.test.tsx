@@ -11,7 +11,12 @@ jest.mock("./components/AuthProvider", () => ({
 
 jest.mock("./components/AuthPage", () => ({
   __esModule: true,
-  default: () => <div>AuthPage Mock</div>,
+  default: ({ onSuccess }: { onSuccess: () => void }) => (
+    <div>
+      AuthPage Mock
+      <button onClick={onSuccess}>Login Success</button>
+    </div>
+  ),
 }));
 
 jest.mock("./components/ViewManager", () => ({

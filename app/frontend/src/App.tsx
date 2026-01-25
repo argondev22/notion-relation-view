@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { AuthProvider } from "./components/AuthProvider";
 import AuthPage from "./components/AuthPage";
@@ -15,6 +15,10 @@ function App() {
     navigate(`/view/${view.id}`);
   };
 
+  const handleAuthSuccess = () => {
+    navigate("/views");
+  };
+
   return (
     <AuthProvider>
       <div className="app">
@@ -22,7 +26,7 @@ function App() {
           <h1>Notion Relation View</h1>
         </header>
         <Routes>
-          <Route path="/" element={<AuthPage />} />
+          <Route path="/" element={<AuthPage onSuccess={handleAuthSuccess} />} />
           <Route
             path="/views"
             element={
