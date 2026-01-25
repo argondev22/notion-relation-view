@@ -6,5 +6,4 @@ const MockForceGraph2D = React.forwardRef(() => {
 
 MockForceGraph2D.displayName = "MockForceGraph2D";
 
-export { MockForceGraph2D as ForceGraph2D };
 export default MockForceGraph2D;

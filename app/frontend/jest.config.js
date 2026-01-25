@@ -3,7 +3,7 @@ export default {
   testEnvironment: "jsdom",
   moduleNameMapper: {
     "\\.(css|less|scss|sass)$": "identity-obj-proxy",
-    "^react-force-graph$": "<rootDir>/src/__mocks__/react-force-graph.ts",
+    "^react-force-graph-2d$": "<rootDir>/src/__mocks__/react-force-graph-2d.ts",
   },
   setupFilesAfterEnv: ["<rootDir>/src/setupTests.ts"],
   testMatch: ["**/__tests__/**/*.ts?(x)", "**/?(*.)+(spec|test).ts?(x)"],
