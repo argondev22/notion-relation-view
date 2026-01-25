@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { viewApi, notionApi } from "../api/client";
+import { viewApi, notionApi, graphApi } from "../api/client";
 import { View } from "../types";
 import LoadingSpinner from "./LoadingSpinner";
 import ErrorMessage from "./ErrorMessage";
@@ -29,8 +29,8 @@ const ViewManager: React.FC<ViewManagerProps> = ({
   const checkNotionToken = async () => {
     try {
       setCheckingToken(true);
-      await notionApi.verifyNotionToken();
-      setHasNotionToken(true);
+      const result = await notionApi.verifyNotionToken();
+      setHasNotionToken(result.valid);
     } catch (err) {
       setHasNotionToken(false);
     } finally {
@@ -184,6 +184,33 @@ const CreateViewForm: React.FC<CreateViewFormProps> = ({
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [databases, setDatabases] = useState<any[]>([]);
+  const [selectedDatabaseIds, setSelectedDatabaseIds] = useState<string[]>([]);
+  const [loadingDatabases, setLoadingDatabases] = useState(true);
+
+  useEffect(() => {
+    loadDatabases();
+  }, []);
+
+  const loadDatabases = async () => {
+    try {
+      setLoadingDatabases(true);
+      const fetchedDatabases = await graphApi.getDatabases();
+      setDatabases(fetchedDatabases);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load databases");
+    } finally {
+      setLoadingDatabases(false);
+    }
+  };
+
+  const handleDatabaseToggle = (databaseId: string) => {
+    setSelectedDatabaseIds((prev) =>
+      prev.includes(databaseId)
+        ? prev.filter((id) => id !== databaseId)
+        : [...prev, databaseId]
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,10 +221,15 @@ const CreateViewForm: React.FC<CreateViewFormProps> = ({
       return;
     }
 
+    if (selectedDatabaseIds.length === 0) {
+      setError("Please select at least one database");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const newView = await viewApi.createView(name, []);
+      const newView = await viewApi.createView(name, selectedDatabaseIds);
       onSuccess(newView);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create view");
@@ -205,6 +237,14 @@ const CreateViewForm: React.FC<CreateViewFormProps> = ({
       setLoading(false);
     }
   };
+
+  if (loadingDatabases) {
+    return (
+      <div className="create-view-form">
+        <LoadingSpinner message="Loading databases..." />
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="create-view-form">
@@ -221,10 +261,34 @@ const CreateViewForm: React.FC<CreateViewFormProps> = ({
         />
       </div>
 
+      <div className="form-group">
+        <label>Select Databases</label>
+        {databases.length === 0 ? (
+          <p className="empty-message">
+            No databases found. Make sure your Notion integration has access to
+            databases.
+          </p>
+        ) : (
+          <div className="database-selection">
+            {databases.map((db) => (
+              <label key={db.id} className="database-checkbox">
+                <input
+                  type="checkbox"
+                  checked={selectedDatabaseIds.includes(db.id)}
+                  onChange={() => handleDatabaseToggle(db.id)}
+                  disabled={loading}
+                />
+                <span>{db.title}</span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+
       {error && <div className="error-message">{error}</div>}
 
       <div className="form-actions">
-        <button type="submit" disabled={loading}>
+        <button type="submit" disabled={loading || databases.length === 0}>
           {loading ? "Creating..." : "Create"}
         </button>
         <button type="button" onClick={onCancel} disabled={loading}>

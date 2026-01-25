@@ -34,8 +34,16 @@ const ViewPage: React.FC = () => {
       setView(fetchedView);
       setGraphData(fetchedData);
       setFilteredData(fetchedData);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to load view";
+    } catch (err: any) {
+      let errorMessage = "Failed to load view";
+
+      // Extract error message from API response
+      if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+
       setError(errorMessage);
     } finally {
       setLoading(false);

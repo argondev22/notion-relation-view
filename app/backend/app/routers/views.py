@@ -367,6 +367,13 @@ async def get_view_graph_data(
                 detail=f"View with id {view_id} not found"
             )
 
+        # Check if view has any databases selected
+        if not view.database_ids or len(view.database_ids) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This view has no databases selected. Please edit the view and select at least one database to display."
+            )
+
         # Get full graph data for the user
         graph_data = await graph_service.get_graph_data(db, str(view.user_id))
 
@@ -403,6 +410,9 @@ async def get_view_graph_data(
     except HTTPException:
         raise
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error retrieving view graph data: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve view graph data: {str(e)}"
