@@ -7,6 +7,14 @@ jest.mock("./components/AuthProvider", () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
+  useAuth: () => ({
+    user: null,
+    loading: false,
+    login: jest.fn(),
+    register: jest.fn(),
+    logout: jest.fn(),
+    refreshUser: jest.fn(),
+  }),
 }));
 
 jest.mock("./components/AuthPage", () => ({

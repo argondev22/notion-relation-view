@@ -5,6 +5,8 @@ import { View, GraphData, ViewSettings } from "../types";
 import GraphVisualizer from "./GraphVisualizer";
 import SearchBar from "./SearchBar";
 import DatabaseFilter from "./DatabaseFilter";
+import LoadingSpinner from "./LoadingSpinner";
+import ErrorMessage from "./ErrorMessage";
 
 const ViewPage: React.FC = () => {
   const { viewId } = useParams<{ viewId: string }>();
@@ -23,6 +25,7 @@ const ViewPage: React.FC = () => {
   const loadView = async (id: string) => {
     try {
       setLoading(true);
+      setError("");
       const [fetchedView, fetchedData] = await Promise.all([
         viewApi.getView(id),
         viewApi.getViewGraphData(id),
@@ -31,11 +34,17 @@ const ViewPage: React.FC = () => {
       setView(fetchedView);
       setGraphData(fetchedData);
       setFilteredData(fetchedData);
-      setError("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load view");
+      const errorMessage = err instanceof Error ? err.message : "Failed to load view";
+      setError(errorMessage);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRetry = () => {
+    if (viewId) {
+      loadView(viewId);
     }
   };
 
@@ -67,7 +76,6 @@ const ViewPage: React.FC = () => {
   const handleSearchResult = (matchedNodes: any[]) => {
     if (!graphData) return;
 
-    // Highlight matched nodes
     const matchedIds = new Set(matchedNodes.map((n) => n.id));
     const updatedData = {
       ...graphData,
@@ -110,15 +118,15 @@ const ViewPage: React.FC = () => {
   };
 
   if (loading) {
-    return <div className="view-page loading">Loading view...</div>;
+    return <LoadingSpinner message="Loading view..." />;
   }
 
   if (error) {
-    return <div className="view-page error">{error}</div>;
+    return <ErrorMessage message={error} onRetry={handleRetry} />;
   }
 
   if (!view || !filteredData) {
-    return <div className="view-page">View not found</div>;
+    return <ErrorMessage message="View not found" />;
   }
 
   return (

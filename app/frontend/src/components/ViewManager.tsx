@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { viewApi } from "../api/client";
 import { View } from "../types";
+import LoadingSpinner from "./LoadingSpinner";
+import ErrorMessage from "./ErrorMessage";
 
 interface ViewManagerProps {
   onViewSelect: (view: View) => void;
@@ -54,7 +56,7 @@ const ViewManager: React.FC<ViewManagerProps> = ({
   };
 
   if (loading) {
-    return <div className="view-manager loading">Loading views...</div>;
+    return <LoadingSpinner message="Loading views..." />;
   }
 
   return (
@@ -69,7 +71,7 @@ const ViewManager: React.FC<ViewManagerProps> = ({
         </button>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && <ErrorMessage message={error} onRetry={loadViews} />}
 
       {showCreateForm && (
         <CreateViewForm
