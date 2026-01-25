@@ -23,18 +23,32 @@ const ViewPage: React.FC = () => {
   }, [viewId]);
 
   const loadView = async (id: string) => {
+    console.log("Loading view:", id);
     try {
       setLoading(true);
       setError("");
-      const [fetchedView, fetchedData] = await Promise.all([
-        viewApi.getView(id),
-        viewApi.getViewGraphData(id),
-      ]);
+
+      // Try to fetch view details (requires auth)
+      let fetchedView: View | null = null;
+      try {
+        console.log("Fetching view details...");
+        fetchedView = await viewApi.getView(id);
+        console.log("View details fetched:", fetchedView);
+      } catch (viewErr) {
+        console.warn("Could not fetch view details (may not be authenticated):", viewErr);
+      }
+
+      // Fetch graph data (public endpoint)
+      console.log("Fetching graph data...");
+      const fetchedData = await viewApi.getViewGraphData(id);
+      console.log("Graph data fetched:", fetchedData);
 
       setView(fetchedView);
       setGraphData(fetchedData);
       setFilteredData(fetchedData);
+      console.log("View loaded successfully");
     } catch (err: any) {
+      console.error("Error loading view:", err);
       let errorMessage = "Failed to load view";
 
       // Extract error message from API response
@@ -47,6 +61,7 @@ const ViewPage: React.FC = () => {
       setError(errorMessage);
     } finally {
       setLoading(false);
+      console.log("Loading complete, loading state:", false);
     }
   };
 
@@ -133,14 +148,14 @@ const ViewPage: React.FC = () => {
     return <ErrorMessage message={error} onRetry={handleRetry} />;
   }
 
-  if (!view || !filteredData) {
+  if (!filteredData) {
     return <ErrorMessage message="View not found" />;
   }
 
   return (
     <div className="view-page">
       <div className="view-header">
-        <h2>{view.name}</h2>
+        <h2>{view?.name || "Graph View"}</h2>
       </div>
 
       <div className="view-controls">
@@ -151,7 +166,7 @@ const ViewPage: React.FC = () => {
         />
         <DatabaseFilter
           databases={graphData?.databases || []}
-          selectedDatabaseIds={view.databaseIds}
+          selectedDatabaseIds={view?.databaseIds || []}
           onSelectionChange={handleDatabaseFilterChange}
         />
       </div>
@@ -161,8 +176,8 @@ const ViewPage: React.FC = () => {
           data={filteredData}
           onZoom={handleZoomChange}
           onPan={handlePanChange}
-          initialZoom={view.settings.zoomLevel}
-          initialPan={{ x: view.settings.panX, y: view.settings.panY }}
+          initialZoom={view?.settings?.zoomLevel || 1.0}
+          initialPan={{ x: view?.settings?.panX || 0, y: view?.settings?.panY || 0 }}
         />
       </div>
     </div>
