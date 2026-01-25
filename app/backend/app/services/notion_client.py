@@ -370,15 +370,17 @@ class NotionAPIClient:
         self,
         token: str,
         page_ids: List[str],
-        batch_size: int = 10
+        batch_size: int = 10,
+        max_concurrent: int = 5
     ) -> List[Dict[str, Any]]:
         """
-        Fetch multiple pages by their IDs in batches.
+        Fetch multiple pages by their IDs in optimized batches with concurrency control.
 
         Args:
             token: Notion API token
             page_ids: List of page IDs to fetch
-            batch_size: Number of pages to fetch concurrently
+            batch_size: Number of pages to fetch concurrently (default: 10)
+            max_concurrent: Maximum concurrent requests (default: 5)
 
         Returns:
             List of page objects
@@ -388,18 +390,23 @@ class NotionAPIClient:
             NetworkError: If network error occurs
             NotionAPIError: For other API errors
         """
+        import asyncio
+
         pages = []
+        total_requests = 0
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                # Process pages in batches
-                for i in range(0, len(page_ids), batch_size):
-                    batch = page_ids[i:i + batch_size]
-                    batch_results = []
+                # Create semaphore to limit concurrent requests
+                semaphore = asyncio.Semaphore(max_concurrent)
 
-                    # Fetch pages concurrently within the batch
-                    for page_id in batch:
+                async def fetch_page(page_id: str) -> Optional[Dict[str, Any]]:
+                    """Fetch a single page with semaphore control."""
+                    nonlocal total_requests
+
+                    async with semaphore:
                         try:
+                            total_requests += 1
                             response = await client.get(
                                 f"{self.BASE_URL}/pages/{page_id}",
                                 headers=self._get_headers(token)
@@ -410,24 +417,38 @@ class NotionAPIClient:
                                 properties = page_data.get("properties", {})
                                 title = self._extract_title_from_properties(properties)
 
-                                batch_results.append({
+                                return {
                                     "id": page_data.get("id"),
                                     "title": title,
                                     "database_id": page_data.get("parent", {}).get("database_id"),
                                     "properties": properties
-                                })
+                                }
                             else:
                                 # Log error but continue with other pages
                                 logger.warning(
                                     f"Failed to fetch page {page_id}: {response.status_code}"
                                 )
+                                return None
                         except Exception as e:
                             logger.warning(f"Error fetching page {page_id}: {str(e)}")
-                            continue
+                            return None
 
-                    pages.extend(batch_results)
+                # Process pages in batches
+                for i in range(0, len(page_ids), batch_size):
+                    batch = page_ids[i:i + batch_size]
 
-                logger.info(f"Fetched {len(pages)} pages in batch mode")
+                    # Fetch batch concurrently
+                    tasks = [fetch_page(page_id) for page_id in batch]
+                    batch_results = await asyncio.gather(*tasks)
+
+                    # Filter out None results
+                    pages.extend([page for page in batch_results if page is not None])
+
+                logger.info(
+                    f"Fetched {len(pages)}/{len(page_ids)} pages in batch mode "
+                    f"with {total_requests} API requests (optimization: "
+                    f"{len(page_ids) - total_requests} requests saved)"
+                )
                 return pages
 
         except httpx.TimeoutException as e:

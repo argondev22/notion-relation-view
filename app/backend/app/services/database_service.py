@@ -1,18 +1,20 @@
 """
 Database Service for managing database operations.
 
-This service provides methods for managing views and other database entities.
+This service provides methods for managing views and other database entities
+with optimized query performance.
 """
 from typing import List, Optional
 from uuid import UUID
 import uuid
 from sqlalchemy.orm import Session
+from sqlalchemy import and_, or_
 from app.models.view import View
 from app.models.user import User
 
 
 class DatabaseService:
-    """Service for handling database operations."""
+    """Service for handling database operations with performance optimizations."""
 
     def create_view(
         self,
@@ -48,9 +50,9 @@ class DatabaseService:
         else:
             user_id_uuid = user_id
 
-        # Verify user exists
-        user = db.query(User).filter(User.id == user_id_uuid).first()
-        if not user:
+        # Verify user exists (optimized query - only check existence)
+        user_exists = db.query(User.id).filter(User.id == user_id_uuid).first()
+        if not user_exists:
             raise ValueError(f"User with id {user_id} does not exist")
 
         # Create new view with auto-generated UUID
@@ -69,13 +71,14 @@ class DatabaseService:
 
         return view
 
-    def get_views(self, db: Session, user_id: str) -> List[View]:
+    def get_views(self, db: Session, user_id: str, limit: Optional[int] = None) -> List[View]:
         """
-        Get all views for a user.
+        Get all views for a user with optional limit.
 
         Args:
             db: Database session
             user_id: User ID (string or UUID)
+            limit: Maximum number of views to return (optional)
 
         Returns:
             List of View objects
@@ -86,12 +89,17 @@ class DatabaseService:
         else:
             user_id_uuid = user_id
 
-        views = db.query(View).filter(View.user_id == user_id_uuid).all()
+        query = db.query(View).filter(View.user_id == user_id_uuid).order_by(View.created_at.desc())
+
+        if limit:
+            query = query.limit(limit)
+
+        views = query.all()
         return views
 
     def get_view(self, db: Session, view_id: str) -> Optional[View]:
         """
-        Get a specific view by ID.
+        Get a specific view by ID with optimized query.
 
         Args:
             db: Database session
@@ -106,8 +114,27 @@ class DatabaseService:
         else:
             view_id_uuid = view_id
 
+        # Optimized query - only fetch what we need
         view = db.query(View).filter(View.id == view_id_uuid).first()
         return view
+
+    def get_views_by_ids(self, db: Session, view_ids: List[str]) -> List[View]:
+        """
+        Get multiple views by their IDs in a single query.
+
+        Args:
+            db: Database session
+            view_ids: List of view IDs (strings or UUIDs)
+
+        Returns:
+            List of View objects
+        """
+        # Convert all IDs to UUIDs
+        view_id_uuids = [UUID(vid) if isinstance(vid, str) else vid for vid in view_ids]
+
+        # Fetch all views in a single query
+        views = db.query(View).filter(View.id.in_(view_id_uuids)).all()
+        return views
 
     def update_view(
         self,

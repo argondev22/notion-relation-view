@@ -5,7 +5,7 @@ import logging
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import Column, String, DateTime, JSON
+from sqlalchemy import Column, String, DateTime, JSON, Index
 from sqlalchemy.dialects.postgresql import UUID
 from app.database import Base
 
@@ -21,13 +21,17 @@ class CachedGraphData(Base):
     user_id = Column(UUID(as_uuid=True), primary_key=True)
     data = Column(JSON, nullable=False)
     cached_at = Column(DateTime(timezone=True), nullable=False)
-    expires_at = Column(DateTime(timezone=True), nullable=False)
+    expires_at = Column(DateTime(timezone=True), nullable=False, index=True)
 
 
 class CacheManager:
-    """Manager for caching graph data."""
+    """Manager for caching graph data with optimized performance."""
 
     DEFAULT_TTL_MINUTES = 15
+    # Adaptive TTL based on data size
+    SMALL_DATA_TTL_MINUTES = 30  # < 100 nodes
+    MEDIUM_DATA_TTL_MINUTES = 20  # 100-500 nodes
+    LARGE_DATA_TTL_MINUTES = 15  # > 500 nodes
 
     def __init__(self, ttl_minutes: int = DEFAULT_TTL_MINUTES):
         """
@@ -38,19 +42,40 @@ class CacheManager:
         """
         self.ttl_minutes = ttl_minutes
 
+    def _calculate_adaptive_ttl(self, data: Dict[str, Any]) -> int:
+        """
+        Calculate adaptive TTL based on data size.
+
+        Args:
+            data: Graph data
+
+        Returns:
+            TTL in minutes
+        """
+        node_count = len(data.get('nodes', []))
+
+        if node_count < 100:
+            return self.SMALL_DATA_TTL_MINUTES
+        elif node_count < 500:
+            return self.MEDIUM_DATA_TTL_MINUTES
+        else:
+            return self.LARGE_DATA_TTL_MINUTES
+
     async def cache_graph_data(
         self,
         db: Session,
         user_id: str,
-        data: Dict[str, Any]
+        data: Dict[str, Any],
+        use_adaptive_ttl: bool = True
     ) -> None:
         """
-        Cache graph data for a user.
+        Cache graph data for a user with optimized storage.
 
         Args:
             db: Database session
             user_id: User ID (string or UUID)
             data: Graph data to cache
+            use_adaptive_ttl: Use adaptive TTL based on data size (default: True)
 
         Raises:
             Exception: If caching fails
@@ -62,7 +87,14 @@ class CacheManager:
                 user_id = uuid.UUID(user_id)
 
             now = datetime.utcnow()
-            expires_at = now + timedelta(minutes=self.ttl_minutes)
+
+            # Calculate TTL
+            if use_adaptive_ttl:
+                ttl_minutes = self._calculate_adaptive_ttl(data)
+            else:
+                ttl_minutes = self.ttl_minutes
+
+            expires_at = now + timedelta(minutes=ttl_minutes)
 
             # Check if cache entry exists
             cached_entry = db.query(CachedGraphData).filter(
@@ -85,7 +117,11 @@ class CacheManager:
                 db.add(new_cache)
 
             db.commit()
-            logger.info(f"Cached graph data for user {user_id}, expires at {expires_at}")
+            logger.info(
+                f"Cached graph data for user {user_id}, "
+                f"nodes={len(data.get('nodes', []))}, "
+                f"ttl={ttl_minutes}min, expires at {expires_at}"
+            )
 
         except Exception as e:
             db.rollback()
@@ -208,6 +244,36 @@ class CacheManager:
         except Exception as e:
             logger.error(f"Failed to check cache validity for user {user_id}: {str(e)}")
             return False
+
+    async def cleanup_expired_cache(self, db: Session) -> int:
+        """
+        Clean up all expired cache entries.
+
+        Args:
+            db: Database session
+
+        Returns:
+            Number of entries deleted
+        """
+        try:
+            now = datetime.utcnow()
+
+            # Delete all expired entries
+            deleted_count = db.query(CachedGraphData).filter(
+                CachedGraphData.expires_at < now
+            ).delete()
+
+            db.commit()
+
+            if deleted_count > 0:
+                logger.info(f"Cleaned up {deleted_count} expired cache entries")
+
+            return deleted_count
+
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to cleanup expired cache: {str(e)}")
+            return 0
 
 
 # Create a singleton instance
