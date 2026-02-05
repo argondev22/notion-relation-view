@@ -2,6 +2,7 @@
 Security utilities for JWT and encryption
 """
 
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
@@ -58,9 +59,13 @@ def verify_token(token: str) -> dict:
     )
     return payload
 
-def _get_encryption_key() -> bytes:
+
+def _get_encryption_key(salt: bytes) -> bytes:
     """
     Derive encryption key from settings using PBKDF2
+
+    Args:
+        salt: Random salt for key derivation
 
     Returns:
         32-byte encryption key suitable for Fernet
@@ -68,11 +73,12 @@ def _get_encryption_key() -> bytes:
     kdf = PBKDF2(
         algorithm=hashes.SHA256(),
         length=32,
-        salt=b"notion-relation-view-salt",
+        salt=salt,
         iterations=100000,
     )
     key = base64.urlsafe_b64encode(kdf.derive(settings.ENCRYPTION_KEY.encode()))
     return key
+
 
 def encrypt_notion_token(token: str) -> str:
     """
@@ -82,15 +88,18 @@ def encrypt_notion_token(token: str) -> str:
         token: Plain text Notion API token
 
     Returns:
-        Encrypted token as base64 string
+        Encrypted token with salt as base64 string
     """
-    key = _get_encryption_key()
+    salt = os.urandom(16)
+
+    key = _get_encryption_key(salt)
     fernet = Fernet(key)
     encrypted = fernet.encrypt(token.encode())
-    return encrypted.decode()
+
+    combined = salt + encrypted
+    return base64.urlsafe_b64encode(combined).decode()
 
 
-# 暗号化されたトークンを復号化
 def decrypt_notion_token(encrypted_token: str) -> str:
     """
     Decrypt Notion API token
@@ -101,10 +110,8 @@ def decrypt_notion_token(encrypted_token: str) -> str:
     Returns:
         Decrypted plain text token
     """
-    # base64デコード
     combined = base64.urlsafe_b64decode(encrypted_token.encode())
 
-    # saltと暗号化データを分離
     salt = combined[:16]
     encrypted = combined[16:]
 
