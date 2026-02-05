@@ -26,25 +26,143 @@ notion-relation-viewは、Notionのページ間のリレーションを視覚的
 
 ### システム構成
 
-```mermaid
-graph TB
-    User[ユーザー]
-    Frontend[フロントエンド]
-    Backend[バックエンド]
-    DB[(データベース)]
-    NotionAPI[Notion API]
-    GoogleOIDC[Google OIDC]
+#### 認証フロー（Google OIDC）
 
-    User -->|操作| Frontend
-    Frontend -->|API呼び出し| Backend
-    Backend -->|認証・データ取得| Frontend
-    Backend -->|トークン保存・取得| DB
-    Backend -->|データキャッシュ| DB
-    Backend -->|Notion API呼び出し| NotionAPI
-    NotionAPI -->|ページ・リレーションデータ| Backend
-    Frontend -->|Google認証| GoogleOIDC
-    GoogleOIDC -->|IDトークン| Backend
-    Backend -->|トークン検証| GoogleOIDC
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend
+    participant Backend
+    participant GoogleOIDC as Google OIDC
+    participant DB as Database
+
+    User->>Frontend: アプリケーションにアクセス
+    Frontend->>User: 「Googleでログイン」ボタンを表示
+    User->>Frontend: ログインボタンをクリック
+    Frontend->>Backend: Google認証URLを要求
+    Backend->>Frontend: 認証URL（PKCE付き）を返す
+    Frontend->>GoogleOIDC: 認証URLにリダイレクト
+    User->>GoogleOIDC: Googleアカウントで認証
+    GoogleOIDC->>Frontend: 認証コードを返す（コールバック）
+    Frontend->>Backend: 認証コードを送信
+    Backend->>GoogleOIDC: IDトークンを要求
+    GoogleOIDC->>Backend: IDトークンを返す
+    Backend->>Backend: IDトークンを検証
+    Backend->>DB: ユーザー情報を確認/作成
+    DB->>Backend: ユーザー情報を返す
+    Backend->>Backend: セッショントークン（JWT）を生成
+    Backend->>Frontend: セッショントークンを返す
+    Frontend->>Frontend: セッショントークンを保存（Cookie）
+    Frontend->>User: ダッシュボードを表示
+```
+
+#### グラフデータ取得フロー
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend
+    participant Backend
+    participant NotionAPI as Notion API
+    participant Cache
+    participant DB as Database
+
+    User->>Frontend: Notion APIトークンを入力
+    Frontend->>Backend: トークンを保存
+    Backend->>Backend: トークンを暗号化
+    Backend->>DB: 暗号化トークンを保存
+    DB->>Backend: 保存完了
+    Backend->>Frontend: 保存成功を返す
+
+    User->>Frontend: グラフデータを要求
+    Frontend->>Backend: グラフデータ取得API呼び出し
+    Backend->>Cache: キャッシュを確認
+    alt キャッシュが有効
+        Cache->>Backend: キャッシュデータを返す
+    else キャッシュが無効または存在しない
+        Backend->>DB: 暗号化トークンを取得
+        DB->>Backend: 暗号化トークンを返す
+        Backend->>Backend: トークンを復号化
+        Backend->>NotionAPI: データベース一覧を取得
+        NotionAPI->>Backend: データベース一覧を返す
+        Backend->>NotionAPI: 各データベースのページを取得
+        NotionAPI->>Backend: ページデータを返す
+        Backend->>Backend: リレーションを抽出
+        Backend->>Backend: グラフデータを構築
+        Backend->>Cache: グラフデータをキャッシュ
+    end
+    Backend->>Frontend: グラフデータを返す
+    Frontend->>Frontend: グラフを描画
+    Frontend->>User: グラフを表示
+```
+
+#### ページメンション抽出フロー（Pro限定）
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend
+    participant Backend
+    participant PlanEnforcer as Plan Enforcer
+    participant NotionAPI as Notion API
+    participant RelationExtractor as Relation Extractor
+
+    User->>Frontend: リレーション抽出モードを「メンション」に変更
+    Frontend->>Backend: 抽出モード変更を要求
+    Backend->>PlanEnforcer: ユーザープランを確認
+    PlanEnforcer->>Backend: プラン情報を返す
+
+    alt Pro Plan
+        Backend->>Backend: 抽出モードを保存
+        Backend->>Frontend: 変更成功を返す
+        User->>Frontend: グラフデータを要求
+        Frontend->>Backend: グラフデータ取得（メンションモード）
+        Backend->>NotionAPI: 全ページを取得
+        NotionAPI->>Backend: ページリストを返す
+
+        loop 各ページ
+            Backend->>NotionAPI: ページのブロックコンテンツを取得
+            NotionAPI->>Backend: ブロックデータを返す
+            Backend->>RelationExtractor: メンションを抽出
+            RelationExtractor->>Backend: メンションリストを返す
+            Backend->>Frontend: 進行状況を通知
+        end
+
+        Backend->>Backend: リレーションを構築（重複排除）
+        Backend->>Frontend: グラフデータを返す
+        Frontend->>User: グラフを表示
+    else Free Plan
+        Backend->>Frontend: アクセス拒否エラーを返す
+        Frontend->>User: Pro限定機能の通知を表示
+    end
+```
+
+#### ビュー管理フロー
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Frontend
+    participant Backend
+    participant DB as Database
+
+    User->>Frontend: ビュー設定を作成
+    Frontend->>Backend: ビュー作成API呼び出し
+    Backend->>DB: ビュー設定を保存
+    DB->>Backend: ビューIDを返す
+    Backend->>Backend: ビューURLを生成
+    Backend->>Frontend: ビュー情報を返す
+    Frontend->>User: ビューURLを表示
+
+    User->>User: ビューURLをNotionに埋め込む
+    User->>Frontend: ビューURLにアクセス
+    Frontend->>Backend: ビューIDでグラフデータを要求
+    Backend->>DB: ビュー設定を取得
+    DB->>Backend: ビュー設定を返す
+    Backend->>Backend: 設定に基づきグラフデータを構築
+    Backend->>Frontend: グラフデータを返す
+    Frontend->>Frontend: ビュー設定を適用（ズーム、パン）
+    Frontend->>User: グラフを表示
 ```
 
 ### レイヤー構成
