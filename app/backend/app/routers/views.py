@@ -49,11 +49,28 @@ class ViewResponse(BaseModel):
         from_attributes = True
 
 
+class FailedDatabase(BaseModel):
+    """Model for a database that failed to load"""
+    id: str
+    title: str
+    error: str
+
+
+class GraphMetadata(BaseModel):
+    """Metadata about graph data fetch operation"""
+    total_databases: int
+    successful_databases: int
+    failed_databases: List[FailedDatabase]
+    fetched_at: str
+    from_cache: bool = False
+
+
 class GraphDataResponse(BaseModel):
-    """Response model for graph data"""
+    """Response model for graph data with metadata"""
     nodes: List[dict]
     edges: List[dict]
     databases: List[dict]
+    metadata: Optional[GraphMetadata] = None
 
 
 @router.post("", response_model=ViewResponse, status_code=status.HTTP_201_CREATED)
