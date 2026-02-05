@@ -186,6 +186,372 @@ sequenceDiagram
 
 ## コンポーネントとインターフェース
 
+### UI設計
+
+#### 画面構成
+
+本アプリケーションは以下の主要画面で構成されます：
+
+1. **ログイン画面**: Google OIDC認証
+2. **トークン設定画面**: Notion API トークン入力
+3. **ダッシュボード**: メインのグラフビュー
+4. **ビュー管理画面**: ビュー設定の作成・編集
+5. **設定画面**: テーマ、プラン情報
+
+#### 1. ログイン画面
+
+```
++------------------------------------------+
+|                                          |
+|                                          |
+|          [Notion Relation View]          |
+|               [Logo/Icon]                |
+|                                          |
+|    Visualize your Notion connections     |
+|                                          |
+|     +---------------------------+        |
+|     | [G] Sign in with Google   |        |
+|     +---------------------------+        |
+|                                          |
+|                                          |
++------------------------------------------+
+```
+
+**要素**:
+- アプリケーションロゴ（中央上部）
+- キャッチコピー
+- Googleログインボタン（目立つデザイン）
+- シンプルで清潔なデザイン
+
+#### 2. トークン設定画面
+
+```
++------------------------------------------+
+|  [←] Back                                |
++------------------------------------------+
+|                                          |
+|     Connect to Notion                    |
+|                                          |
+|     To visualize your Notion pages,      |
+|     please provide your Integration      |
+|     Token.                               |
+|                                          |
+|     +------------------------------+     |
+|     | Notion Integration Token     |     |
+|     | [____________________]       |     |
+|     +------------------------------+     |
+|                                          |
+|     [?] How to get your token            |
+|                                          |
+|     [Cancel]           [Connect]         |
+|                                          |
++------------------------------------------+
+```
+
+**要素**:
+- 戻るボタン
+- 説明文
+- トークン入力フィールド（パスワード形式）
+- ヘルプリンク（トークン取得方法）
+- キャンセル・接続ボタン
+
+#### 3. ダッシュボード（メイン画面）
+
+```
++------------------------------------------------------------------+
+| [Logo] Notion Relation View    [Search...] [☀️/🌙] [👤] [⚙️]    |
++------------------------------------------------------------------+
+| Sidebar (280px)        | Graph Canvas                            |
+|                        |                                         |
+| Views                  |                                         |
+| ├─ [+] New View        |                                         |
+| ├─ 📊 My Workspace     |         [Graph Visualization]           |
+| └─ 📊 Project Map      |                                         |
+|                        |         • Nodes (pages)                 |
+| Databases              |         • Edges (relations)             |
+| ☐ Projects             |         • Interactive                   |
+| ☑ Tasks                |                                         |
+| ☑ Notes                |                                         |
+|                        |                                         |
+| Filters                |                                         |
+| Extraction Mode: ▼     |                                         |
+| • Property only        |                                         |
+| • Mention only [Pro]   |                                         |
+| • Both [Pro]           |                                         |
+|                        |                                         |
++------------------------+-----------------------------------------+
+| Status: 150 nodes, 230 edges | Zoom: 100% | FPS: 60            |
++------------------------------------------------------------------+
+```
+
+**レイアウト**:
+- **ヘッダー（固定）**:
+  - ロゴ・アプリ名（左）
+  - グローバル検索バー（中央）
+  - テーマ切り替えボタン（右）
+  - ユーザーメニュー（右）
+  - 設定ボタン（右）
+
+- **サイドバー（280px、リサイズ可能）**:
+  - ビューリスト
+  - データベースフィルター（チェックボックス）
+  - リレーション抽出モード選択
+  - 検索フィルター
+
+- **グラフキャンバス（メイン）**:
+  - インタラクティブなグラフ表示
+  - ズーム・パン操作
+  - ノードクリックでNotionページを開く
+
+- **ステータスバー（固定）**:
+  - ノード数・エッジ数
+  - ズームレベル
+  - FPS表示
+
+#### 4. ビュー管理画面（モーダル）
+
+```
++------------------------------------------+
+| Create New View                      [×] |
++------------------------------------------+
+|                                          |
+| View Name                                |
+| [_____________________________]          |
+|                                          |
+| Select Databases                         |
+| ☑ Projects                               |
+| ☑ Tasks                                  |
+| ☐ Notes                                  |
+| ☐ Archive                                |
+|                                          |
+| Relation Extraction Mode                 |
+| ○ Property only                          |
+| ○ Mention only [Pro Badge]               |
+| ○ Both [Pro Badge]                       |
+|                                          |
+| [Cancel]                  [Create View]  |
+|                                          |
++------------------------------------------+
+```
+
+**要素**:
+- ビュー名入力
+- データベース選択（複数選択可能）
+- リレーション抽出モード選択
+- Pro機能にはバッジ表示
+- キャンセル・作成ボタン
+
+#### 5. 設定画面（モーダル）
+
+```
++------------------------------------------+
+| Settings                             [×] |
++------------------------------------------+
+| Appearance                               |
+|   Theme                                  |
+|   ○ Light                                |
+|   ○ Dark                                 |
+|   ● System                               |
+|                                          |
+| Account                                  |
+|   Email: user@example.com                |
+|   Plan: Free [Upgrade to Pro]            |
+|                                          |
+| Notion Integration                       |
+|   Token: ••••••••••••••                  |
+|   [Update Token]                         |
+|                                          |
+| About                                    |
+|   Version: 1.0.0                         |
+|   [Documentation] [Support]              |
+|                                          |
+| [Close]                                  |
++------------------------------------------+
+```
+
+**セクション**:
+- **Appearance**: テーマ設定
+- **Account**: ユーザー情報、プラン
+- **Notion Integration**: トークン管理
+- **About**: バージョン、ドキュメント
+
+#### コンポーネント階層
+
+```
+App
+├── AuthProvider
+│   └── LoginScreen
+│       └── GoogleLoginButton
+├── MainLayout
+│   ├── Header
+│   │   ├── Logo
+│   │   ├── SearchBar
+│   │   ├── ThemeToggle
+│   │   └── UserMenu
+│   ├── Sidebar
+│   │   ├── ViewList
+│   │   │   ├── ViewItem
+│   │   │   └── NewViewButton
+│   │   ├── DatabaseFilter
+│   │   │   └── DatabaseCheckbox
+│   │   └── ExtractionModeSelector
+│   ├── GraphCanvas
+│   │   ├── GraphRenderer
+│   │   ├── NodeComponent
+│   │   └── EdgeComponent
+│   └── StatusBar
+├── ViewModal
+│   ├── ViewForm
+│   └── DatabaseSelector
+└── SettingsModal
+    ├── ThemeSettings
+    ├── AccountSettings
+    └── NotionSettings
+```
+
+#### 状態管理
+
+```typescript
+// グローバル状態
+interface AppState {
+  // 認証
+  user: User | null;
+  isAuthenticated: boolean;
+
+  // Notion接続
+  notionConnected: boolean;
+
+  // グラフデータ
+  graphData: GraphData | null;
+  selectedDatabases: string[];
+  extractionMode: RelationExtractionMode;
+
+  // UI状態
+  theme: ThemeMode;
+  sidebarOpen: boolean;
+  activeView: View | null;
+
+  // モーダル
+  viewModalOpen: boolean;
+  settingsModalOpen: boolean;
+
+  // 検索・フィルター
+  searchQuery: string;
+  highlightedNodes: string[];
+}
+```
+
+#### レスポンシブデザイン
+
+**デスクトップ（1024px以上）**:
+- サイドバー表示
+- 全機能利用可能
+
+**タブレット（768px - 1023px）**:
+- サイドバーは折りたたみ可能
+- ハンバーガーメニュー
+
+**モバイル（767px以下）**:
+- サイドバーはオーバーレイ表示
+- 簡略化されたUI
+- タッチ操作最適化
+
+#### カラーパレット
+
+**ライトモード**:
+```
+Background:    #FFFFFF
+Surface:       #F5F5F5
+Primary:       #2563EB (Blue)
+Secondary:     #64748B (Slate)
+Text Primary:  #1E293B
+Text Secondary:#64748B
+Border:        #E2E8F0
+Success:       #10B981
+Warning:       #F59E0B
+Error:         #EF4444
+```
+
+**ダークモード**:
+```
+Background:    #0F172A
+Surface:       #1E293B
+Primary:       #3B82F6 (Blue)
+Secondary:     #94A3B8 (Slate)
+Text Primary:  #F1F5F9
+Text Secondary:#94A3B8
+Border:        #334155
+Success:       #34D399
+Warning:       #FBBF24
+Error:         #F87171
+```
+
+#### タイポグラフィ
+
+```
+Font Family:
+  - Primary: Inter, system-ui, sans-serif
+  - Monospace: 'Fira Code', monospace
+
+Font Sizes:
+  - Heading 1: 32px / 2rem
+  - Heading 2: 24px / 1.5rem
+  - Heading 3: 20px / 1.25rem
+  - Body: 16px / 1rem
+  - Small: 14px / 0.875rem
+  - Tiny: 12px / 0.75rem
+
+Line Heights:
+  - Tight: 1.25
+  - Normal: 1.5
+  - Relaxed: 1.75
+```
+
+#### アイコン
+
+**推奨アイコンライブラリ**: Lucide Icons または Heroicons
+
+**主要アイコン**:
+- ログイン: `LogIn`
+- ユーザー: `User`
+- 設定: `Settings`
+- テーマ: `Sun` / `Moon`
+- 検索: `Search`
+- フィルター: `Filter`
+- ビュー: `LayoutGrid`
+- データベース: `Database`
+- 追加: `Plus`
+- 削除: `Trash`
+- 編集: `Edit`
+- 閉じる: `X`
+
+#### アニメーション
+
+**トランジション**:
+```css
+/* 標準 */
+transition: all 0.2s ease-in-out;
+
+/* テーマ切り替え */
+transition: background-color 0.3s ease, color 0.3s ease;
+
+/* モーダル */
+transition: opacity 0.2s ease, transform 0.2s ease;
+```
+
+**ローディング**:
+- スピナー（データ取得中）
+- プログレスバー（メンション抽出中）
+- スケルトンスクリーン（初期ロード）
+
+#### アクセシビリティ
+
+- **キーボードナビゲーション**: すべての操作をキーボードで実行可能
+- **スクリーンリーダー**: ARIA属性の適切な使用
+- **コントラスト比**: WCAG 2.1 AA基準（4.5:1以上）
+- **フォーカスインジケーター**: 明確なフォーカス表示
+- **エラーメッセージ**: 明確で具体的
+
 ### フロントエンドコンポーネント
 
 #### 1. Frontend API Client
