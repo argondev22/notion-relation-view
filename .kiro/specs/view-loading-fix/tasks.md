@@ -6,7 +6,7 @@ This implementation plan addresses three critical issues: datetime timezone mism
 
 ## Tasks
 
-- [~] 1. Fix datetime timezone handling in cache manager
+- [x] 1. Fix datetime timezone handling in cache manager
   - Replace all `datetime.utcnow()` calls with `datetime.now(timezone.utc)`
   - Add validation to ensure all datetime objects are timezone-aware
   - Update cache expiration queries to use timezone-aware comparisons
@@ -16,14 +16,14 @@ This implementation plan addresses three critical issues: datetime timezone mism
   - **Property 1: Timezone-Aware DateTime Consistency**
   - **Validates: Requirements 1.1, 1.2, 1.3, 1.4**
 
-- [~] 2. Create database migration for per-database caching
+- [x] 2. Create database migration for per-database caching
   - Create new `cached_database_data` table with composite primary key (user_id, database_id)
   - Add indexes for efficient lookups (user_id + database_id, expires_at)
   - Include timezone-aware datetime columns
   - _Requirements: 6.1_
 
 - [ ] 3. Implement retry logic with exponential backoff
-  - [~] 3.1 Create retry decorator for async functions
+  - [x] 3.1 Create retry decorator for async functions
     - Implement exponential backoff calculation
     - Handle different error types (timeout, network, rate limit)
     - Add configurable retry parameters (max_retries, base_delay, max_delay)
@@ -34,7 +34,7 @@ This implementation plan addresses three critical issues: datetime timezone mism
     - **Property 3: Retry Exponential Backoff**
     - **Validates: Requirements 2.3**
 
-  - [~] 3.3 Apply retry decorator to Notion API methods
+  - [x] 3.3 Apply retry decorator to Notion API methods
     - Add `@with_retry` to `get_databases()` method
     - Add `@with_retry` to `get_pages()` method
     - Configure appropriate retry parameters for each method
@@ -48,7 +48,7 @@ This implementation plan addresses three critical issues: datetime timezone mism
     - _Requirements: 2.3, 2.4, 2.5_
 
 - [ ] 4. Add configurable timeout support
-  - [~] 4.1 Update NotionAPIClient initialization
+  - [x] 4.1 Update NotionAPIClient initialization
     - Add timeout configuration from environment variables
     - Set default timeouts: 60s (databases), 90s (pages), 30s (individual pages)
     - Update httpx.Timeout configuration per operation type
@@ -61,25 +61,25 @@ This implementation plan addresses three critical issues: datetime timezone mism
     - _Requirements: 5.1, 5.5_
 
 - [ ] 5. Implement per-database cache manager methods
-  - [~] 5.1 Add CachedDatabaseData model
+  - [x] 5.1 Add CachedDatabaseData model
     - Define SQLAlchemy model with composite primary key
     - Add indexes for efficient queries
     - Use timezone-aware DateTime columns
     - _Requirements: 6.1_
 
-  - [~] 5.2 Implement cache_database_data method
+  - [x] 5.2 Implement cache_database_data method
     - Store data for individual database
     - Use timezone-aware datetime for cached_at and expires_at
     - Calculate adaptive TTL based on data size
     - _Requirements: 6.1, 6.5_
 
-  - [~] 5.3 Implement get_database_data method
+  - [x] 5.3 Implement get_database_data method
     - Retrieve cached data for specific database
     - Check expiration using timezone-aware comparison
     - Return None if expired or not found
     - _Requirements: 6.1, 6.5_
 
-  - [~] 5.4 Implement get_all_cached_databases method
+  - [x] 5.4 Implement get_all_cached_databases method
     - Retrieve all cached databases for a user
     - Filter out expired entries
     - Return dictionary mapping database_id to data
@@ -90,19 +90,19 @@ This implementation plan addresses three critical issues: datetime timezone mism
     - **Property 5: Cache Fallback on Fetch Failure**
     - **Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5**
 
-- [~] 6. Checkpoint - Ensure all tests pass
+- [x] 6. Checkpoint - Ensure all tests pass
   - Run all backend tests to verify datetime fixes and retry logic
   - Verify cache operations work correctly
   - Ensure all tests pass, ask the user if questions arise
 
 - [ ] 7. Implement progressive data fetching in graph service
-  - [~] 7.1 Create get_graph_data_progressive method
+  - [x] 7.1 Create get_graph_data_progressive method
     - Accept progress callback function
     - Return cached data immediately if available
     - Fetch fresh data and yield progress updates
     - _Requirements: 3.1, 3.2_
 
-  - [~] 7.2 Create _fetch_and_transform_data_progressive method
+  - [x] 7.2 Create _fetch_and_transform_data_progressive method
     - Fetch databases and yield progress
     - Iterate through databases with error handling
     - Continue processing on individual database failures
@@ -116,7 +116,7 @@ This implementation plan addresses three critical issues: datetime timezone mism
     - **Property 2: Multi-Database Fetch Resilience**
     - **Validates: Requirements 2.1, 2.6**
 
-  - [~] 7.3 Implement _merge_database_data method
+  - [x] 7.3 Implement _merge_database_data method
     - Merge per-database cached data into complete graph
     - Transform pages to nodes and edges
     - Return unified graph structure
@@ -129,7 +129,7 @@ This implementation plan addresses three critical issues: datetime timezone mism
     - Test progress callbacks are invoked
     - _Requirements: 2.1, 2.6, 6.2_
 
-- [~] 8. Add response metadata models
+- [x] 8. Add response metadata models
   - Create GraphMetadata Pydantic model
   - Create enhanced GraphDataResponse model with metadata field
   - Update view endpoint response type
@@ -140,7 +140,7 @@ This implementation plan addresses three critical issues: datetime timezone mism
   - **Validates: Requirements 3.4, 3.5**
 
 - [ ] 9. Implement streaming endpoint for progressive loading
-  - [~] 9.1 Add _filter_graph_data helper method
+  - [ ] 9.1 Add _filter_graph_data helper method
     - Filter nodes by selected database IDs
     - Filter edges to only include visible nodes
     - Filter databases list
