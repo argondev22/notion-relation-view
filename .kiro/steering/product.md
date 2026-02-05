@@ -1,27 +1,24 @@
 # Product Overview
 
-## Notion Relation View
+A comprehensive development template that accelerates project setup with pre-configured tooling and best practices.
 
-A web application that visualizes Notion page relationships as an interactive graph, similar to Obsidian's graph view. Users can explore connections between Notion pages through nodes and edges representing relations.
+## Core Purpose
 
-### Core Features
+Provides a ready-to-use development environment featuring:
 
-- **Graph Visualization**: Display Notion pages as nodes with relation-based connections
-- **Interactive Navigation**: Click nodes to open pages, drag to reposition, pan/zoom canvas
-- **View Management**: Create, save, and share multiple view configurations with unique URLs
-- **Notion Embedding**: Embed views directly in Notion pages via URL
-- **Database Filtering**: Select specific databases to display in the graph
-- **Search & Highlight**: Find and focus on specific pages
+- Dev container setup for instant environment consistency
+- GitHub workflows and templates for standardized collaboration
+- Full-stack sample application demonstrating 3-tier architecture (React + FastAPI + PostgreSQL)
+- Real-time data updates with persistent storage
 
-### Monetization
+## Key Features
 
-Two-tier subscription model:
-- **Free Plan**: 1 view, 100 nodes, basic features
-- **Pro Plan**: $10/month, unlimited views/nodes, export (PNG/SVG), custom themes, advanced filtering, layout algorithms
+- Docker-based development environment with VSCode integration
+- Standardized issue and PR templates
+- Auto-generated API documentation (Swagger UI)
+- Modern responsive web interface
+- Database migration management with Alembic
 
-### Technical Approach
+## Target Use Case
 
-- Web-based application accessible across all Notion platforms (web, desktop, mobile)
-- Connects via Notion API with user-provided tokens
-- Stores API tokens and view configurations server-side
-- Real-time data updates from Notion workspace
+Template for bootstrapping new projects with modern development practices, suitable for full-stack web applications requiring containerized environments and standardized workflows.
