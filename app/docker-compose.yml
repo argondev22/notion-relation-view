@@ -18,19 +18,19 @@ services:
       retries: 5
 
   # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: notion-relation-view-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: notion-relation-view-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis_data:/data
+  #   command: redis-server --appendonly yes
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
 
   # Backend (FastAPI)
   backend:
@@ -62,24 +62,24 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
   # Frontend (React + Vite)
-  frontend:
-    image: argondev22/notion-relation-view-frontend:latest
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: notion-relation-view-frontend
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
-    environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
-    depends_on:
-      - backend
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    command: npm run dev -- --host 0.0.0.0 --port 3000
+  # frontend:
+  #   image: argondev22/notion-relation-view-frontend:latest
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   container_name: notion-relation-view-frontend
+  #   ports:
+  #     - "3000:3000"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+  #   depends_on:
+  #     - backend
+  #   volumes:
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   command: npm run dev -- --host 0.0.0.0 --port 3000
 
 volumes:
   postgres_data:
