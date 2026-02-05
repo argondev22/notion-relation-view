@@ -198,6 +198,168 @@ sequenceDiagram
 4. **ビュー管理画面**: ビュー設定の作成・編集
 5. **設定画面**: テーマ、プラン情報
 
+#### 画面遷移図
+
+```mermaid
+stateDiagram-v2
+    [*] --> ログイン画面
+
+    ログイン画面 --> トークン設定画面: Google認証成功
+    ログイン画面 --> ログイン画面: 認証失敗
+
+    トークン設定画面 --> ダッシュボード: トークン保存成功
+    トークン設定画面 --> トークン設定画面: トークン無効
+    トークン設定画面 --> ログイン画面: 戻る
+
+    ダッシュボード --> ビュー管理モーダル: 新規ビュー作成
+    ダッシュボード --> ビュー管理モーダル: ビュー編集
+    ダッシュボード --> 設定モーダル: 設定ボタン
+    ダッシュボード --> ログイン画面: ログアウト
+
+    ビュー管理モーダル --> ダッシュボード: ビュー作成/更新
+    ビュー管理モーダル --> ダッシュボード: キャンセル
+
+    設定モーダル --> ダッシュボード: 閉じる
+    設定モーダル --> トークン設定画面: トークン更新
+    設定モーダル --> ログイン画面: ログアウト
+
+    note right of ダッシュボード
+        メイン画面
+        - グラフ表示
+        - ビュー切り替え
+        - データベースフィルター
+        - 検索
+    end note
+
+    note right of ビュー管理モーダル
+        モーダル表示
+        ダッシュボード上に
+        オーバーレイ
+    end note
+
+    note right of 設定モーダル
+        モーダル表示
+        ダッシュボード上に
+        オーバーレイ
+    end note
+```
+
+#### ユーザーフロー
+
+**初回ユーザー（新規登録）**:
+
+```mermaid
+flowchart TD
+    Start([アプリにアクセス]) --> Login[ログイン画面]
+    Login --> GoogleAuth{Google認証}
+    GoogleAuth -->|成功| TokenSetup[トークン設定画面]
+    GoogleAuth -->|失敗| Login
+    TokenSetup --> TokenInput{トークン入力}
+    TokenInput -->|有効| Dashboard[ダッシュボード]
+    TokenInput -->|無効| TokenSetup
+    Dashboard --> UseApp[アプリ使用]
+
+    style Start fill:#e1f5e1
+    style UseApp fill:#e1f5e1
+    style Dashboard fill:#fff4e1
+```
+
+**既存ユーザー（再訪問）**:
+
+```mermaid
+flowchart TD
+    Start([アプリにアクセス]) --> CheckSession{セッション有効?}
+    CheckSession -->|有効| CheckToken{トークン保存済み?}
+    CheckSession -->|無効| Login[ログイン画面]
+    CheckToken -->|あり| Dashboard[ダッシュボード]
+    CheckToken -->|なし| TokenSetup[トークン設定画面]
+    Login --> GoogleAuth[Google認証]
+    GoogleAuth --> CheckToken
+    TokenSetup --> Dashboard
+    Dashboard --> UseApp[アプリ使用]
+
+    style Start fill:#e1f5e1
+    style UseApp fill:#e1f5e1
+    style Dashboard fill:#fff4e1
+```
+
+**ビュー作成フロー**:
+
+```mermaid
+flowchart TD
+    Dashboard[ダッシュボード] --> NewView[新規ビューボタン]
+    NewView --> Modal[ビュー管理モーダル]
+    Modal --> InputName[ビュー名入力]
+    InputName --> SelectDB[データベース選択]
+    SelectDB --> SelectMode{プラン確認}
+    SelectMode -->|Free Plan| PropertyOnly[プロパティのみ選択]
+    SelectMode -->|Pro Plan| ChooseMode[抽出モード選択]
+    PropertyOnly --> Create[作成ボタン]
+    ChooseMode --> Create
+    Create --> Validate{入力検証}
+    Validate -->|OK| Save[ビュー保存]
+    Validate -->|NG| Modal
+    Save --> ShowURL[ビューURL表示]
+    ShowURL --> Dashboard
+
+    style Dashboard fill:#fff4e1
+    style ShowURL fill:#e1f5e1
+```
+
+**Pro機能アクセスフロー**:
+
+```mermaid
+flowchart TD
+    User[ユーザー] --> ProFeature{Pro機能にアクセス}
+    ProFeature --> CheckPlan{プラン確認}
+    CheckPlan -->|Pro Plan| Allow[機能利用可能]
+    CheckPlan -->|Free Plan| Block[アクセス拒否]
+    Block --> ShowModal[アップグレードモーダル]
+    ShowModal --> UserChoice{ユーザー選択}
+    UserChoice -->|今すぐアップグレード| Payment[決済画面へ]
+    UserChoice -->|後で| Dashboard[ダッシュボードに戻る]
+    Payment --> Success{決済成功?}
+    Success -->|成功| UpdatePlan[プランをProに更新]
+    Success -->|失敗| Dashboard
+    UpdatePlan --> Allow
+    Allow --> UseFeature[機能使用]
+
+    style Allow fill:#e1f5e1
+    style UseFeature fill:#e1f5e1
+    style Block fill:#ffe1e1
+```
+
+**エラーハンドリングフロー**:
+
+```mermaid
+flowchart TD
+    Action[ユーザー操作] --> Execute{実行}
+    Execute -->|成功| Success[成功メッセージ]
+    Execute -->|失敗| ErrorType{エラー種類}
+
+    ErrorType -->|ネットワークエラー| NetworkError[ネットワークエラー表示]
+    ErrorType -->|認証エラー| AuthError[認証エラー表示]
+    ErrorType -->|レート制限| RateLimit[レート制限通知]
+    ErrorType -->|その他| GenericError[一般エラー表示]
+
+    NetworkError --> Retry{再試行?}
+    AuthError --> ReAuth[再認証へ]
+    RateLimit --> Wait[待機時間表示]
+    GenericError --> Retry
+
+    Retry -->|はい| Execute
+    Retry -->|いいえ| End([終了])
+    ReAuth --> Login[ログイン画面]
+    Wait --> End
+    Success --> End
+
+    style Success fill:#e1f5e1
+    style NetworkError fill:#ffe1e1
+    style AuthError fill:#ffe1e1
+    style RateLimit fill:#fff4e1
+    style GenericError fill:#ffe1e1
+```
+
 #### 1. ログイン画面
 
 ```
@@ -479,7 +641,7 @@ Surface:       #1E293B
 Primary:       #3B82F6 (Blue)
 Secondary:     #94A3B8 (Slate)
 Text Primary:  #F1F5F9
-Text Secondary:#94A3B8
+Text Secondary:　#94A3B8
 Border:        #334155
 Success:       #34D399
 Warning:       #FBBF24
