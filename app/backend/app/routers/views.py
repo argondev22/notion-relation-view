@@ -2,15 +2,20 @@
 Views API router for managing view configurations.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
+import json
+import logging
 
 from app.database import get_db
 from app.routers.auth import get_current_user
 from app.services.database_service import database_service
 from app.services.graph_service import graph_service
 from app.models.user import User
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/api/views", tags=["views"])
@@ -353,23 +358,88 @@ async def delete_view(
         )
 
 
-@router.get("/{view_id}/data", response_model=GraphDataResponse)
+def _filter_graph_data(
+    graph_data: dict,
+    selected_db_ids: List[str]
+) -> dict:
+    """
+    Filter graph data by selected database IDs.
+
+    This helper method filters nodes, edges, and databases to only include
+    data from the specified databases. Edges are filtered to only include
+    connections between visible nodes.
+
+    Args:
+        graph_data: Complete graph data with nodes, edges, databases, and optional metadata
+        selected_db_ids: List of database IDs to include in the filtered result
+
+    Returns:
+        Filtered graph data with same structure as input:
+        {
+            "nodes": [...],  # Only nodes from selected databases
+            "edges": [...],  # Only edges between visible nodes
+            "databases": [...],  # Only selected databases
+            "metadata": {...}  # Preserved if present
+        }
+    """
+    selected_db_ids_set = set(selected_db_ids)
+
+    # Filter nodes by database ID
+    filtered_nodes = [
+        node for node in graph_data.get("nodes", [])
+        if node.get("databaseId") in selected_db_ids_set
+    ]
+
+    # Get set of visible node IDs
+    filtered_node_ids = {node["id"] for node in filtered_nodes}
+
+    # Filter edges to only include connections between visible nodes
+    filtered_edges = [
+        edge for edge in graph_data.get("edges", [])
+        if edge.get("sourceId") in filtered_node_ids
+        and edge.get("targetId") in filtered_node_ids
+    ]
+
+    # Filter databases list
+    filtered_databases = [
+        db for db in graph_data.get("databases", [])
+        if db.get("id") in selected_db_ids_set
+    ]
+
+    # Build result with filtered data
+    result = {
+        "nodes": filtered_nodes,
+        "edges": filtered_edges,
+        "databases": filtered_databases
+    }
+
+    # Preserve metadata if present
+    if "metadata" in graph_data:
+        result["metadata"] = graph_data["metadata"]
+
+    return result
+
+
+@router.get("/{view_id}/data")
 async def get_view_graph_data(
     view_id: str,
+    stream: bool = False,
     db: Session = Depends(get_db)
 ):
     """
     Get graph data for a specific view (public access via view URL).
 
     This endpoint allows public access to view data via the view URL,
-    without requiring authentication.
+    without requiring authentication. Supports both regular and streaming modes.
 
     Args:
         view_id: View ID
+        stream: If True, stream progress updates via Server-Sent Events (default: False)
         db: Database session
 
     Returns:
-        Graph data filtered by view's database selection
+        - If stream=False: GraphDataResponse with complete data
+        - If stream=True: StreamingResponse with Server-Sent Events
 
     Raises:
         HTTPException: If view not found or data retrieval fails
@@ -384,51 +454,91 @@ async def get_view_graph_data(
                 detail=f"View with id {view_id} not found"
             )
 
-        # Check if view has any databases selected
+        # Validate view configuration
         if not view.database_ids or len(view.database_ids) == 0:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="This view has no databases selected. Please edit the view and select at least one database to display."
             )
 
-        # Get full graph data for the user
-        graph_data = await graph_service.get_graph_data(db, str(view.user_id))
+        # Filter out any invalid database IDs (non-existent databases)
+        # This is a soft validation - we'll just log a warning
+        if view.database_ids:
+            logger.info(f"View {view_id} configured with {len(view.database_ids)} databases")
 
-        # Filter by view's selected databases
-        selected_db_ids = set(view.database_ids)
+        # Validate zoom and pan values, use defaults if invalid
+        zoom_level = view.zoom_level if view.zoom_level and view.zoom_level > 0 else 1.0
+        pan_x = view.pan_x if view.pan_x is not None else 0.0
+        pan_y = view.pan_y if view.pan_y is not None else 0.0
 
-        # Filter nodes
-        filtered_nodes = [
-            node for node in graph_data["nodes"]
-            if node["databaseId"] in selected_db_ids
-        ]
+        if zoom_level != view.zoom_level or pan_x != view.pan_x or pan_y != view.pan_y:
+            logger.warning(
+                f"View {view_id} has invalid zoom/pan values. "
+                f"Using defaults: zoom={zoom_level}, pan_x={pan_x}, pan_y={pan_y}"
+            )
 
-        # Get filtered node IDs
-        filtered_node_ids = {node["id"] for node in filtered_nodes}
+        if stream:
+            # Return streaming response with Server-Sent Events
+            async def generate():
+                try:
+                    progress_updates = []
 
-        # Filter edges (only include edges where both nodes are in filtered set)
-        filtered_edges = [
-            edge for edge in graph_data["edges"]
-            if edge["sourceId"] in filtered_node_ids and edge["targetId"] in filtered_node_ids
-        ]
+                    def yield_progress(update: dict):
+                        """Callback to capture and send progress updates"""
+                        progress_updates.append(update)
+                        # Send as Server-Sent Event
+                        event_data = json.dumps(update)
+                        return f"data: {event_data}\n\n"
 
-        # Filter databases
-        filtered_databases = [
-            db for db in graph_data["databases"]
-            if db["id"] in selected_db_ids
-        ]
+                    # Get data with progress callbacks
+                    graph_data = await graph_service.get_graph_data_progressive(
+                        db, str(view.user_id), yield_progress
+                    )
 
-        return GraphDataResponse(
-            nodes=filtered_nodes,
-            edges=filtered_edges,
-            databases=filtered_databases
-        )
+                    # Yield all progress updates
+                    for update in progress_updates:
+                        event_data = json.dumps(update)
+                        yield f"data: {event_data}\n\n"
+
+                    # Filter by view's selected databases
+                    filtered_data = _filter_graph_data(graph_data, view.database_ids)
+
+                    # Send final complete event
+                    final_event = json.dumps({
+                        "type": "complete",
+                        "data": filtered_data
+                    })
+                    yield f"data: {final_event}\n\n"
+
+                except Exception as e:
+                    logger.error(f"Error in streaming response: {str(e)}", exc_info=True)
+                    error_event = json.dumps({
+                        "type": "error",
+                        "error": str(e)
+                    })
+                    yield f"data: {error_event}\n\n"
+
+            return StreamingResponse(
+                generate(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no"  # Disable nginx buffering
+                }
+            )
+        else:
+            # Return complete data (existing behavior for backward compatibility)
+            graph_data = await graph_service.get_graph_data(db, str(view.user_id))
+
+            # Filter by view's selected databases
+            filtered_data = _filter_graph_data(graph_data, view.database_ids)
+
+            return GraphDataResponse(**filtered_data)
 
     except HTTPException:
         raise
     except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
         logger.error(f"Error retrieving view graph data: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
