@@ -1337,6 +1337,7 @@ interface User {
 
 ```typescript
 interface NotionToken {
+  id: string; // NotionトークンID
   userId: string; // ユーザーID
   encryptedToken: string; // 暗号化されたNotionトークン
   createdAt: Date; // 作成日時
