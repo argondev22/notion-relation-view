@@ -27,7 +27,24 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 
 ## 要件
 
-### 要件1: Notion APIとの接続
+### 要件1: Google OIDC認証
+
+**ユーザーストーリー:** ユーザーとして、Googleアカウントでログインしたい。そうすることで、パスワードを管理せずに安全にアプリケーションを使用できる。
+
+#### 受け入れ基準
+
+1. WHEN ユーザーがアプリケーションにアクセスする THEN THE System SHALL 「Googleでログイン」ボタンを表示する
+2. WHEN ユーザーが「Googleでログイン」をクリックする THEN THE Auth_Provider SHALL Google OIDCフローを開始する
+3. WHEN ユーザーがGoogleで認証を完了する THEN THE Auth_Provider SHALL IDトークンを検証し、ユーザー情報（メールアドレス、名前、プロフィール画像）を取得する
+4. WHEN 初回ログインである THEN THE System SHALL 新しいユーザーアカウントを作成する
+5. WHEN 既存ユーザーがログインする THEN THE System SHALL ユーザーのセッションを復元する
+6. WHEN 認証が成功する THEN THE System SHALL セキュアなセッショントークンを発行し、クライアントに保存する
+7. WHEN 認証が失敗する THEN THE System SHALL エラーメッセージを表示し、再試行オプションを提供する
+8. THE System SHALL パスワードベースの認証を提供しない
+9. THE System SHALL ユーザーのGoogleアカウントメールアドレスを一意の識別子として使用する
+10. WHEN ユーザーがログアウトする THEN THE System SHALL セッションを無効化し、ログイン画面にリダイレクトする
+
+### 要件2: Notion APIとの接続
 
 **ユーザーストーリー:** ユーザーとして、自分のNotionワークスペースに接続したい。そうすることで、ページとリレーションのデータを取得できる。
 
@@ -38,7 +55,18 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 3. IF 無効なAPIトークンが提供される THEN THE System SHALL 明確なエラーメッセージを表示し、再入力を促す
 4. WHEN APIリクエストが失敗する THEN THE Notion_API_Client SHALL エラーをログに記録し、ユーザーに通知する
 
-### 要件2: ページとリレーションデータの取得
+### 要件2: Notion APIとの接続
+
+**ユーザーストーリー:** ユーザーとして、自分のNotionワークスペースに接続したい。そうすることで、ページとリレーションのデータを取得できる。
+
+#### 受け入れ基準
+
+1. WHEN ユーザーがNotion APIトークンを提供する THEN THE Notion_API_Client SHALL トークンを検証し、接続を確立する
+2. WHEN 接続が成功する THEN THE System SHALL ユーザーにアクセス可能なデータベースとページのリストを表示する
+3. IF 無効なAPIトークンが提供される THEN THE System SHALL 明確なエラーメッセージを表示し、再入力を促す
+4. WHEN APIリクエストが失敗する THEN THE Notion_API_Client SHALL エラーをログに記録し、ユーザーに通知する
+
+### 要件3: ページとリレーションデータの取得
 
 **ユーザーストーリー:** ユーザーとして、Notionワークスペースからページとリレーション情報を取得したい。そうすることで、グラフを構築できる。
 
@@ -50,7 +78,19 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 4. WHEN データ取得が完了する THEN THE System SHALL 取得したページ数とリレーション数を表示する
 5. WHERE ページにリレーションプロパティが存在しない THEN THE System SHALL そのページを孤立ノードとして扱う
 
-### 要件3: グラフの視覚化
+### 要件3: ページとリレーションデータの取得
+
+**ユーザーストーリー:** ユーザーとして、Notionワークスペースからページとリレーション情報を取得したい。そうすることで、グラフを構築できる。
+
+#### 受け入れ基準
+
+1. WHEN ユーザーがデータ取得を開始する THEN THE Notion_API_Client SHALL すべてのアクセス可能なページのメタデータを取得する
+2. WHEN ページデータを取得する THEN THE Notion_API_Client SHALL 各ページのリレーションプロパティを識別する
+3. WHEN リレーションプロパティが見つかる THEN THE Notion_API_Client SHALL リレーション先のページIDを抽出する
+4. WHEN データ取得が完了する THEN THE System SHALL 取得したページ数とリレーション数を表示する
+5. WHERE ページにリレーションプロパティが存在しない THEN THE System SHALL そのページを孤立ノードとして扱う
+
+### 要件4: グラフの視覚化
 
 **ユーザーストーリー:** ユーザーとして、ページとリレーションをグラフとして視覚化したい。そうすることで、関係構造を理解できる。
 
@@ -62,7 +102,19 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 4. WHEN グラフを初期化する THEN THE Graph_Visualizer SHALL ノードを見やすく配置するレイアウトアルゴリズムを適用する
 5. THE Graph_Visualizer SHALL ノードとエッジを区別できる視覚スタイルを使用する
 
-### 要件4: インタラクティブな操作
+### 要件4: グラフの視覚化
+
+**ユーザーストーリー:** ユーザーとして、ページとリレーションをグラフとして視覚化したい。そうすることで、関係構造を理解できる。
+
+#### 受け入れ基準
+
+1. WHEN データが取得される THEN THE Graph_Visualizer SHALL 各ページをノードとして描画する
+2. WHEN ノードを描画する THEN THE Graph_Visualizer SHALL ページタイトルをノードラベルとして表示する
+3. WHEN リレーションが存在する THEN THE Graph_Visualizer SHALL ノード間にエッジを描画する
+4. WHEN グラフを初期化する THEN THE Graph_Visualizer SHALL ノードを見やすく配置するレイアウトアルゴリズムを適用する
+5. THE Graph_Visualizer SHALL ノードとエッジを区別できる視覚スタイルを使用する
+
+### 要件5: インタラクティブな操作
 
 **ユーザーストーリー:** ユーザーとして、グラフを操作したい。そうすることで、詳細を探索し、ビューをカスタマイズできる。
 
@@ -73,7 +125,18 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 3. WHEN ユーザーがキャンバスをドラッグする THEN THE Graph_Visualizer SHALL ビュー全体をパンする
 4. WHEN ユーザーがスクロールする THEN THE Graph_Visualizer SHALL ズームレベルを調整する
 
-### 要件5: フィルタリングと検索
+### 要件5: インタラクティブな操作
+
+**ユーザーストーリー:** ユーザーとして、グラフを操作したい。そうすることで、詳細を探索し、ビューをカスタマイズできる。
+
+#### 受け入れ基準
+
+1. WHEN ユーザーがノードをクリックする THEN THE System SHALL Notionでそのページを開く
+2. WHEN ユーザーがノードをドラッグする THEN THE Graph_Visualizer SHALL ノードの位置を更新し、接続されたエッジを再描画する
+3. WHEN ユーザーがキャンバスをドラッグする THEN THE Graph_Visualizer SHALL ビュー全体をパンする
+4. WHEN ユーザーがスクロールする THEN THE Graph_Visualizer SHALL ズームレベルを調整する
+
+### 要件6: フィルタリングと検索
 
 **ユーザーストーリー:** ユーザーとして、特定のページやリレーションを見つけたい。そうすることで、大規模なグラフでも効率的にナビゲートできる。
 
@@ -85,7 +148,19 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 4. WHEN ユーザーが検索クエリを入力する THEN THE System SHALL クエリに一致するページタイトルを持つノードをハイライトする
 5. WHEN 検索結果が見つかる THEN THE Graph_Visualizer SHALL 最初の一致するノードにビューを中央揃えする
 
-### 要件6: ビュー管理とデータ永続化
+### 要件6: フィルタリングと検索
+
+**ユーザーストーリー:** ユーザーとして、特定のページやリレーションを見つけたい。そうすることで、大規模なグラフでも効率的にナビゲートできる。
+
+#### 受け入れ基準
+
+1. WHEN アプリケーションが起動する THEN THE System SHALL デフォルトで空のグラフを表示する
+2. WHEN ユーザーがデータベースを選択して表示する THEN THE System SHALL そのデータベースに属するノードとそれらに接続されたエッジを表示する
+3. WHEN 複数のデータベースが選択される THEN THE System SHALL すべての選択されたデータベースのノードとエッジを表示する
+4. WHEN ユーザーが検索クエリを入力する THEN THE System SHALL クエリに一致するページタイトルを持つノードをハイライトする
+5. WHEN 検索結果が見つかる THEN THE Graph_Visualizer SHALL 最初の一致するノードにビューを中央揃えする
+
+### 要件7: ビュー管理とデータ永続化
 
 **ユーザーストーリー:** ユーザーとして、複数のビュー設定を保存・管理したい。そうすることで、異なる目的に応じてグラフの表示を切り替えられる。
 
@@ -103,7 +178,25 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 10. WHEN ユーザーがビューURLをNotionに埋め込む THEN THE System SHALL そのビューの設定でグラフを表示する
 11. WHEN アプリケーションが再起動される THEN THE System SHALL 前回選択していたビュー設定を復元する
 
-### 要件7: エラーハンドリングとユーザーフィードバック
+### 要件7: ビュー管理とデータ永続化
+
+**ユーザーストーリー:** ユーザーとして、複数のビュー設定を保存・管理したい。そうすることで、異なる目的に応じてグラフの表示を切り替えられる。
+
+#### 受け入れ基準
+
+1. WHEN ユーザーがAPIトークンを入力する THEN THE System SHALL トークンを安全にサーバーに保存する
+2. WHEN アプリケーションが起動する THEN THE System SHALL 保存されたAPIトークンを読み込み、自動的に接続を試みる
+3. WHEN ユーザーがビュー設定を作成する THEN THE System SHALL ビュー名、選択されたデータベース、ズームレベル、パン位置を保存し、一意のビューIDを生成する
+4. WHEN ビュー設定が作成される THEN THE System SHALL そのビュー専用のURL（例: /view/{viewId}）を生成する
+5. WHEN ユーザーがビュー専用URLにアクセスする THEN THE System SHALL そのビュー設定を読み込み、グラフを表示する
+6. WHEN ユーザーが複数のビュー設定を作成する THEN THE System SHALL すべてのビュー設定とそれぞれのURLをリスト表示する
+7. WHEN ユーザーがビュー設定を選択する THEN THE System SHALL そのビュー設定を読み込み、グラフを更新する
+8. WHEN ユーザーがビュー設定を更新する THEN THE System SHALL 変更を保存し、次回選択時に反映する
+9. WHEN ユーザーがビュー設定を削除する THEN THE System SHALL そのビュー設定とURLをリストから削除する
+10. WHEN ユーザーがビューURLをNotionに埋め込む THEN THE System SHALL そのビューの設定でグラフを表示する
+11. WHEN アプリケーションが再起動される THEN THE System SHALL 前回選択していたビュー設定を復元する
+
+### 要件8: エラーハンドリングとユーザーフィードバック
 
 **ユーザーストーリー:** ユーザーとして、操作の進行状況とエラーを理解したい。そうすることで、問題が発生したときに適切に対応できる。
 
@@ -115,7 +208,19 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 4. IF APIレート制限に達する THEN THE System SHALL ユーザーに通知し、再試行までの待機時間を表示する
 5. WHEN エラーが発生する THEN THE System SHALL エラーの詳細をコンソールログに記録する
 
-### 要件8: パフォーマンスとスケーラビリティ
+### 要件8: エラーハンドリングとユーザーフィードバック
+
+**ユーザーストーリー:** ユーザーとして、操作の進行状況とエラーを理解したい。そうすることで、問題が発生したときに適切に対応できる。
+
+#### 受け入れ基準
+
+1. WHEN データ取得が進行中である THEN THE System SHALL 進行状況インジケーターを表示する
+2. WHEN 長時間実行される操作が実行される THEN THE System SHALL 推定残り時間または進行状況パーセンテージを表示する
+3. IF ネットワークエラーが発生する THEN THE System SHALL ユーザーフレンドリーなエラーメッセージを表示し、再試行オプションを提供する
+4. IF APIレート制限に達する THEN THE System SHALL ユーザーに通知し、再試行までの待機時間を表示する
+5. WHEN エラーが発生する THEN THE System SHALL エラーの詳細をコンソールログに記録する
+
+### 要件9: パフォーマンスとスケーラビリティ
 
 **ユーザーストーリー:** ユーザーとして、大規模なワークスペースでもスムーズに動作するツールが欲しい。そうすることで、多数のページがあっても使用できる。
 
@@ -126,22 +231,16 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 3. WHEN 大量のデータを処理する THEN THE System SHALL 仮想化またはレベル・オブ・ディテール技術を使用してパフォーマンスを最適化する
 4. WHEN データ取得が実行される THEN THE Notion_API_Client SHALL リクエストをバッチ処理してAPI呼び出しを最小化する
 
-### 要件9: ページメンションベースのリレーション抽出（Pro限定機能）
+### 要件9: パフォーマンスとスケーラビリティ
 
-**ユーザーストーリー:** Pro_Planユーザーとして、データベースのリレーションプロパティだけでなく、ページ内のメンション（@リンク）もグラフに表示したい。そうすることで、より包括的なページ間の関係を可視化できる。
+**ユーザーストーリー:** ユーザーとして、大規模なワークスペースでもスムーズに動作するツールが欲しい。そうすることで、多数のページがあっても使用できる。
 
 #### 受け入れ基準
 
-1. WHEN Pro_Planユーザーがビュー設定を作成または編集する THEN THE System SHALL リレーション抽出モードの選択オプション（「プロパティのみ」「メンションのみ」「両方」）を表示する
-2. WHEN Free_Planユーザーがリレーション抽出モード設定にアクセスしようとする THEN THE Plan_Enforcer SHALL アクセスを拒否し、Pro_Plan限定機能であることを通知する
-3. WHEN ユーザーが「メンションのみ」または「両方」を選択する THEN THE Notion_API_Client SHALL 各ページのブロックコンテンツを取得し、Rich Textオブジェクト内のページメンションを抽出する
-4. WHEN ページメンションが見つかる THEN THE Notion_API_Client SHALL メンション先のページIDを抽出し、エッジとして記録する
-5. WHEN ユーザーが「両方」を選択する THEN THE System SHALL リレーションプロパティとページメンションの両方からエッジを生成し、重複を排除する
-6. WHEN メンション抽出が進行中である THEN THE System SHALL 進行状況（処理済みページ数/総ページ数）を表示する
-7. WHEN メンション抽出が完了する THEN THE System SHALL 抽出されたメンション数とリレーション数を個別に表示する
-8. THE System SHALL メンション抽出のパフォーマンス影響をユーザーに警告する（API呼び出し増加、処理時間増加）
-9. WHEN ユーザーがリレーション抽出モードを切り替える THEN THE System SHALL ビュー設定に選択されたモードを保存し、次回ロード時に適用する
-10. WHEN Pro_PlanユーザーがFree_Planにダウングレードする THEN THE System SHALL リレーション抽出モードを「プロパティのみ」に自動的にリセットする
+1. WHEN グラフに100以上のノードが含まれる THEN THE Graph_Visualizer SHALL 60FPSでレンダリングを維持する
+2. WHEN ユーザーがズームまたはパンする THEN THE System SHALL 200ミリ秒以内に応答する
+3. WHEN 大量のデータを処理する THEN THE System SHALL 仮想化またはレベル・オブ・ディテール技術を使用してパフォーマンスを最適化する
+4. WHEN データ取得が実行される THEN THE Notion_API_Client SHALL リクエストをバッチ処理してAPI呼び出しを最小化する
 
 ### 要件10: テーマ設定
 

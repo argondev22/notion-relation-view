@@ -14,9 +14,13 @@ notion-relation-viewは、Notionのページ間のリレーションを視覚的
 
 4. **サーバーサイドトークン管理**: Notion APIトークンはバックエンドのデータベースに暗号化して保存します。フロントエンドはセッションCookie（HTTPOnly）で認証し、トークンに直接アクセスしません。これにより、XSS攻撃からトークンを保護し、すべてのプラットフォーム（Webブラウザ、デスクトップアプリ）で同じトークンを使用できます。
 
-5. **ユーザー認証**: ユーザーアカウントシステムを実装し、各ユーザーが自分のNotion Integration Tokenを安全に保存・管理できるようにします。認証にはJWT（JSON Web Token）を使用し、セッション管理を行います。
+5. **Google OIDC認証**: ユーザー認証はGoogle OpenID Connectのみを使用します。アプリケーション独自のパスワード管理を行わず、Googleの認証基盤を活用します。これにより、セキュリティリスクを軽減し、ユーザー体験を向上させます。
 
 6. **データキャッシュ**: バックエンドでNotion APIから取得したデータをキャッシュし、API呼び出しを最小化します。これにより、レート制限を回避し、レスポンス速度を向上させます。
+
+7. **リレーション抽出の柔軟性**: リレーションプロパティベースの抽出（Free/Pro共通）とページメンションベースの抽出（Pro限定）の両方をサポートします。Strategy パターンを使用して実装を切り替え可能にします。
+
+8. **テーマ管理**: ライトモード、ダークモード、システム依存の3つのテーマオプションを提供します。ユーザーの好みや環境に合わせた視覚体験を実現します。
 
 ## アーキテクチャ
 
@@ -29,6 +33,7 @@ graph TB
     Backend[バックエンド]
     DB[(データベース)]
     NotionAPI[Notion API]
+    GoogleOIDC[Google OIDC]
 
     User -->|操作| Frontend
     Frontend -->|API呼び出し| Backend
@@ -37,6 +42,9 @@ graph TB
     Backend -->|データキャッシュ| DB
     Backend -->|Notion API呼び出し| NotionAPI
     NotionAPI -->|ページ・リレーションデータ| Backend
+    Frontend -->|Google認証| GoogleOIDC
+    GoogleOIDC -->|IDトークン| Backend
+    Backend -->|トークン検証| GoogleOIDC
 ```
 
 ### レイヤー構成
@@ -45,15 +53,18 @@ graph TB
 
 1. **UIレイヤー**: ユーザーインターフェース、イベントハンドリング、状態管理
 2. **Graph Visualizerレイヤー**: グラフのレンダリング、レイアウト計算、インタラクション処理
-3. **API Clientレイヤー**: バックエンドAPIとの通信
+3. **Theme Managerレイヤー**: テーマ管理、システムテーマ検出、テーマ切り替え
+4. **API Clientレイヤー**: バックエンドAPIとの通信
 
 #### バックエンド
 
 1. **API Gatewayレイヤー**: フロントエンドからのリクエストを受け付け、認証・認可を行う
-2. **Notion API Clientレイヤー**: Notion APIとの通信、データ変換、エラーハンドリング
-3. **Cacheレイヤー**: データキャッシュ、レート制限管理
-4. **Authレイヤー**: ユーザー認証、セッション管理、トークン暗号化
-5. **Databaseレイヤー**: データ永続化、トークン管理
+2. **Auth Providerレイヤー**: Google OIDC認証、セッション管理
+3. **Notion API Clientレイヤー**: Notion APIとの通信、データ変換、エラーハンドリング
+4. **Relation Extractorレイヤー**: リレーション抽出（プロパティベース、メンションベース）
+5. **Plan Enforcerレイヤー**: プラン制限の適用、機能アクセス制御
+6. **Cacheレイヤー**: データキャッシュ、レート制限管理
+7. **Databaseレイヤー**: データ永続化、トークン管理
 
 ## コンポーネントとインターフェース
 
@@ -67,13 +78,9 @@ graph TB
 
 ```typescript
 interface FrontendAPIClient {
-  // ユーザー登録
-  register(email: string, password: string): Promise<AuthResponse>;
-
-  // ユーザーログイン
-  login(email: string, password: string): Promise<AuthResponse>;
-
-  // ユーザーログアウト
+  // Google OIDC認証
+  initiateGoogleLogin(): Promise<void>;
+  handleGoogleCallback(code: string): Promise<AuthResponse>;
   logout(): Promise<void>;
 
   // Notion APIトークンを保存
@@ -86,7 +93,12 @@ interface FrontendAPIClient {
   getDatabases(): Promise<Database[]>;
 
   // ビュー設定を作成
-  createView(name: string, databaseIds: string[], settings: ViewSettings): Promise<View>;
+  createView(
+    name: string,
+    databaseIds: string[],
+    settings: ViewSettings,
+    extractionMode: RelationExtractionMode
+  ): Promise<View>;
 
   // ビュー設定一覧を取得
   getViews(): Promise<View[]>;
@@ -99,7 +111,8 @@ interface FrontendAPIClient {
     viewId: string,
     name: string,
     databaseIds: string[],
-    settings: ViewSettings
+    settings: ViewSettings,
+    extractionMode: RelationExtractionMode
   ): Promise<View>;
 
   // ビュー設定を削除
@@ -107,6 +120,9 @@ interface FrontendAPIClient {
 
   // ビュー設定に基づくグラフデータを取得
   getViewGraphData(viewId: string): Promise<GraphData>;
+
+  // ユーザープラン情報を取得
+  getUserPlan(): Promise<UserPlan>;
 }
 ```
 
@@ -150,7 +166,50 @@ interface GraphVisualizer {
 - ノード間の反発力とエッジの引力でバランスを取る
 - 大規模グラフの場合は階層的レイアウトも検討
 
-#### 3. UI Controller
+#### 3. Theme Manager
+
+**責務**: アプリケーションのテーマ管理、システムテーマ検出、テーマ切り替え
+
+**主要メソッド**:
+
+```typescript
+interface ThemeManager {
+  // テーマを初期化（保存された設定またはシステム設定を読み込む）
+  initialize(): void;
+
+  // テーマを設定
+  setTheme(mode: ThemeMode): void;
+
+  // 現在のテーマを取得
+  getCurrentTheme(): 'light' | 'dark';
+
+  // システムテーマを検出
+  detectSystemTheme(): 'light' | 'dark';
+
+  // システムテーマ変更を監視
+  watchSystemTheme(callback: (theme: 'light' | 'dark') => void): void;
+
+  // テーマをローカルストレージに保存
+  saveThemePreference(mode: ThemeMode): void;
+
+  // 保存されたテーマ設定を読み込む
+  loadThemePreference(): ThemeMode;
+}
+```
+
+**テーマモード**:
+
+```typescript
+type ThemeMode = 'light' | 'dark' | 'system';
+```
+
+**実装詳細**:
+
+- システムテーマ検出: `window.matchMedia('(prefers-color-scheme: dark)')`
+- テーマ適用: CSSカスタムプロパティ（CSS Variables）を使用
+- アクセシビリティ: WCAG 2.1 AA基準のコントラスト比を確保
+
+#### 4. UI Controller
 
 **責務**: ユーザーインターフェースの管理、イベント処理、状態管理
 
@@ -161,11 +220,11 @@ interface UIController {
   // アプリケーションを初期化
   initialize(): Promise<void>;
 
-  // ユーザー登録を処理
-  handleRegister(email: string, password: string): Promise<void>;
+  // Google認証を開始
+  handleGoogleLogin(): Promise<void>;
 
-  // ユーザーログインを処理
-  handleLogin(email: string, password: string): Promise<void>;
+  // Google認証コールバックを処理
+  handleGoogleCallback(code: string): Promise<void>;
 
   // Notion APIトークン入力を処理
   handleTokenInput(token: string): Promise<void>;
@@ -174,13 +233,22 @@ interface UIController {
   fetchData(): Promise<void>;
 
   // ビュー設定を作成
-  createView(name: string, databaseIds: string[]): Promise<void>;
+  createView(
+    name: string,
+    databaseIds: string[],
+    extractionMode: RelationExtractionMode
+  ): Promise<void>;
 
   // ビュー設定を選択
   selectView(viewId: string): Promise<void>;
 
   // ビュー設定を更新
-  updateView(viewId: string, name: string, databaseIds: string[]): Promise<void>;
+  updateView(
+    viewId: string,
+    name: string,
+    databaseIds: string[],
+    extractionMode: RelationExtractionMode
+  ): Promise<void>;
 
   // ビュー設定を削除
   deleteView(viewId: string): Promise<void>;
@@ -197,21 +265,30 @@ interface UIController {
   // ノードクリックを処理
   handleNodeClick(nodeId: string): void;
 
+  // テーマを変更
+  handleThemeChange(mode: ThemeMode): void;
+
   // 進行状況を表示
   showProgress(current: number, total: number): void;
 
   // エラーを表示
   showError(error: Error): void;
+
+  // Pro機能へのアクセス試行を処理
+  handleProFeatureAccess(featureName: string): void;
 }
 ```
 
 **認証フロー**:
 
-1. 初回アクセス時、ログイン/登録画面を表示
-2. ユーザーがアカウントを作成またはログイン
-3. ログイン成功後、Notion Integration Token入力画面を表示
-4. トークンを入力し、バックエンドに保存
-5. グラフビューを表示
+1. 初回アクセス時、「Googleでログイン」ボタンを表示
+2. ユーザーがボタンをクリックし、Google OIDCフローを開始
+3. Googleで認証完了後、コールバックURLにリダイレクト
+4. バックエンドでIDトークンを検証し、ユーザー情報を取得
+5. 初回ログインの場合、新規ユーザーアカウントを作成し、Free_Planを割り当て
+6. セッショントークンを発行し、Notion Integration Token入力画面を表示
+7. トークンを入力し、バックエンドに保存
+8. グラフビューを表示
 
 ### バックエンドコンポーネント
 
@@ -222,27 +299,30 @@ interface UIController {
 **主要エンドポイント**:
 
 ```typescript
-// 認証関連
-POST   /api/auth/register        // ユーザー登録
-POST   /api/auth/login           // ユーザーログイン
-POST   /api/auth/logout          // ユーザーログアウト
-GET    /api/auth/me              // 現在のユーザー情報を取得
+// 認証関連（Google OIDC）
+GET    /api/auth/google/login     // Google OIDCログインURLを取得
+POST   /api/auth/google/callback  // Google認証コールバック処理
+POST   /api/auth/logout           // ユーザーログアウト
+GET    /api/auth/me               // 現在のユーザー情報を取得
 
 // Notionトークン管理
-POST   /api/notion/token         // Notionトークンを保存
-GET    /api/notion/token/verify  // Notionトークンを検証
+POST   /api/notion/token          // Notionトークンを保存
+GET    /api/notion/token/verify   // Notionトークンを検証
 
 // グラフデータ
-GET    /api/graph/data           // グラフデータを取得（全データベース）
-GET    /api/graph/databases      // データベース一覧を取得
+GET    /api/graph/data            // グラフデータを取得（全データベース）
+GET    /api/graph/databases       // データベース一覧を取得
 
 // ビュー管理
-POST   /api/views                // ビュー設定を作成
-GET    /api/views                // ユーザーのビュー設定一覧を取得
-GET    /api/views/:viewId        // 特定のビュー設定を取得
-PUT    /api/views/:viewId        // ビュー設定を更新
-DELETE /api/views/:viewId        // ビュー設定を削除
-GET    /api/views/:viewId/data   // ビュー設定に基づくグラフデータを取得
+POST   /api/views                 // ビュー設定を作成
+GET    /api/views                 // ユーザーのビュー設定一覧を取得
+GET    /api/views/:viewId         // 特定のビュー設定を取得
+PUT    /api/views/:viewId         // ビュー設定を更新
+DELETE /api/views/:viewId         // ビュー設定を削除
+GET    /api/views/:viewId/data    // ビュー設定に基づくグラフデータを取得
+
+// プラン管理
+GET    /api/plan                  // ユーザーのプラン情報を取得
 ```
 
 #### 2. Notion API Client
@@ -262,8 +342,11 @@ interface NotionAPIClient {
   // 指定されたデータベースからページを取得
   getPages(token: string, databaseId: string): Promise<Page[]>;
 
-  // ページのリレーションプロパティを解析
-  extractRelations(page: Page): Relation[];
+  // すべてのアクセス可能なページを取得（データベース外も含む）
+  getAllPages(token: string): Promise<Page[]>;
+
+  // ページのブロックコンテンツを取得
+  getPageBlocks(token: string, pageId: string): Promise<Block[]>;
 
   // バッチ処理でページデータを取得
   fetchPagesInBatch(token: string, pageIds: string[]): Promise<Page[]>;
@@ -277,7 +360,173 @@ interface NotionAPIClient {
 - レート制限: `RateLimitError`
 - 権限不足: `PermissionError`
 
-#### 3. Cache Manager
+#### 3. Relation Extractor
+
+**責務**: ページ間のリレーションを抽出する（Strategy パターン）
+
+**主要インターフェース**:
+
+```typescript
+interface RelationExtractor {
+  // リレーションを抽出
+  extractRelations(
+    token: string,
+    pages: Page[],
+    mode: RelationExtractionMode
+  ): Promise<Relation[]>;
+}
+
+type RelationExtractionMode = 'property' | 'mention' | 'both';
+
+// プロパティベースの抽出（Free + Pro）
+class PropertyRelationExtractor implements RelationExtractor {
+  extractRelations(
+    token: string,
+    pages: Page[],
+    mode: RelationExtractionMode
+  ): Promise<Relation[]> {
+    // ページのリレーションプロパティを解析
+  }
+}
+
+// メンションベースの抽出（Pro限定）
+class MentionRelationExtractor implements RelationExtractor {
+  constructor(private notionClient: NotionAPIClient) {}
+
+  extractRelations(
+    token: string,
+    pages: Page[],
+    mode: RelationExtractionMode
+  ): Promise<Relation[]> {
+    // ページのブロックコンテンツを取得し、メンションを抽出
+  }
+}
+
+// 統合抽出器
+class CombinedRelationExtractor implements RelationExtractor {
+  constructor(
+    private propertyExtractor: PropertyRelationExtractor,
+    private mentionExtractor: MentionRelationExtractor
+  ) {}
+
+  async extractRelations(
+    token: string,
+    pages: Page[],
+    mode: RelationExtractionMode
+  ): Promise<Relation[]> {
+    if (mode === 'property') {
+      return this.propertyExtractor.extractRelations(token, pages, mode);
+    } else if (mode === 'mention') {
+      return this.mentionExtractor.extractRelations(token, pages, mode);
+    } else {
+      // 両方を取得し、重複を排除
+      const propertyRelations = await this.propertyExtractor.extractRelations(
+        token,
+        pages,
+        'property'
+      );
+      const mentionRelations = await this.mentionExtractor.extractRelations(
+        token,
+        pages,
+        'mention'
+      );
+      return this.deduplicateRelations([...propertyRelations, ...mentionRelations]);
+    }
+  }
+
+  private deduplicateRelations(relations: Relation[]): Relation[] {
+    // 重複を排除（sourcePageId + targetPageId の組み合わせで判定）
+  }
+}
+```
+
+#### 4. Plan Enforcer
+
+**責務**: プラン制限の適用、機能アクセス制御
+
+**主要メソッド**:
+
+```typescript
+interface PlanEnforcer {
+  // ユーザーのプランを取得
+  getUserPlan(userId: string): Promise<UserPlan>;
+
+  // 機能へのアクセスを確認
+  canAccessFeature(userId: string, feature: Feature): Promise<boolean>;
+
+  // ビュー作成を確認
+  canCreateView(userId: string): Promise<boolean>;
+
+  // ノード数制限を適用
+  applyNodeLimit(userId: string, nodes: Node[]): Node[];
+
+  // リレーション抽出モードを確認
+  canUseExtractionMode(userId: string, mode: RelationExtractionMode): Promise<boolean>;
+}
+
+type Feature =
+  | 'export'
+  | 'custom_theme'
+  | 'advanced_filtering'
+  | 'layout_algorithm'
+  | 'mention_extraction';
+
+interface UserPlan {
+  plan: 'free' | 'pro';
+  viewLimit: number | null; // null = 無制限
+  nodeLimit: number | null; // null = 無制限
+  features: Feature[];
+}
+```
+
+#### 5. Auth Provider
+
+**責務**: Google OIDC認証、セッション管理
+
+**主要メソッド**:
+
+```typescript
+interface AuthProvider {
+  // Google OIDCログインURLを生成
+  getGoogleLoginUrl(): string;
+
+  // Google認証コールバックを処理
+  handleGoogleCallback(code: string): Promise<GoogleUser>;
+
+  // IDトークンを検証
+  verifyIdToken(idToken: string): Promise<GoogleUser>;
+
+  // セッショントークンを生成
+  createSession(user: User): Promise<SessionToken>;
+
+  // セッションを検証
+  validateSession(sessionToken: string): Promise<User>;
+
+  // セッションを無効化
+  logout(sessionToken: string): Promise<void>;
+
+  // Notionトークンを暗号化
+  encryptNotionToken(token: string): string;
+
+  // Notionトークンを復号化
+  decryptNotionToken(encryptedToken: string): string;
+}
+
+interface GoogleUser {
+  email: string;
+  name: string;
+  picture: string;
+}
+```
+
+**セキュリティ**:
+
+- Google OIDCフロー: Authorization Code Flow with PKCE
+- セッショントークンはJWT（JSON Web Token）
+- NotionトークンはAES-256-GCMで暗号化し、鍵導出にはPBKDF2-HMAC-SHA256を使用
+- HTTPOnly Cookieでセッション管理
+
+#### 6. Cache Manager
 
 **責務**: Notion APIから取得したデータをキャッシュし、API呼び出しを最小化
 
@@ -305,42 +554,7 @@ interface CacheManager {
 - ユーザーごとにキャッシュを分離
 - データ更新時にキャッシュを無効化
 
-#### 4. Auth Service
-
-**責務**: ユーザー認証、セッション管理、トークン暗号化
-
-**主要メソッド**:
-
-```typescript
-interface AuthService {
-  // ユーザーを登録
-  register(email: string, password: string): Promise<User>;
-
-  // ユーザーをログイン
-  login(email: string, password: string): Promise<SessionToken>;
-
-  // セッションを検証
-  validateSession(sessionToken: string): Promise<User>;
-
-  // セッションを無効化
-  logout(sessionToken: string): Promise<void>;
-
-  // Notionトークンを暗号化
-  encryptNotionToken(token: string): string;
-
-  // Notionトークンを復号化
-  decryptNotionToken(encryptedToken: string): string;
-}
-```
-
-**セキュリティ**:
-
-- パスワードはbcryptでハッシュ化（ソルト付き）
-- セッショントークンはJWT（JSON Web Token）
-- NotionトークンはAES-256-GCMで暗号化し、鍵導出にはPBKDF2-HMAC-SHA256を使用
-- HTTPOnly Cookieでセッション管理
-
-#### 5. Database Service
+#### 7. Database Service
 
 **責務**: データベースへのアクセスを管理
 
@@ -348,8 +562,8 @@ interface AuthService {
 
 ```typescript
 interface DatabaseService {
-  // ユーザーを作成
-  createUser(email: string, passwordHash: string): Promise<User>;
+  // ユーザーを作成（Google認証情報から）
+  createUser(email: string, name: string, picture: string): Promise<User>;
 
   // ユーザーを取得
   getUser(userId: string): Promise<User | null>;
@@ -368,7 +582,8 @@ interface DatabaseService {
     userId: string,
     name: string,
     databaseIds: string[],
-    settings: ViewSettings
+    settings: ViewSettings,
+    extractionMode: RelationExtractionMode
   ): Promise<View>;
 
   // ユーザーのビュー設定一覧を取得
@@ -382,11 +597,18 @@ interface DatabaseService {
     viewId: string,
     name: string,
     databaseIds: string[],
-    settings: ViewSettings
+    settings: ViewSettings,
+    extractionMode: RelationExtractionMode
   ): Promise<View>;
 
   // ビュー設定を削除
   deleteView(viewId: string): Promise<void>;
+
+  // ユーザーのプラン情報を取得
+  getUserPlan(userId: string): Promise<UserPlan>;
+
+  // ユーザーのプランを更新
+  updateUserPlan(userId: string, plan: 'free' | 'pro'): Promise<void>;
 }
 ```
 
@@ -447,8 +669,39 @@ interface View {
   name: string; // ビュー名
   databaseIds: string[]; // 表示するデータベースIDリスト
   settings: ViewSettings; // ビュー設定（ズーム、パン）
+  extractionMode: RelationExtractionMode; // リレーション抽出モード
   url: string; // ビュー専用URL（例: /view/{id}）
 }
+```
+
+#### RelationExtractionMode（リレーション抽出モード）
+
+```typescript
+type RelationExtractionMode = 'property' | 'mention' | 'both';
+```
+
+#### ThemeMode（テーマモード）
+
+```typescript
+type ThemeMode = 'light' | 'dark' | 'system';
+```
+
+#### UserPlan（ユーザープラン）
+
+```typescript
+interface UserPlan {
+  plan: 'free' | 'pro';
+  viewLimit: number | null; // null = 無制限
+  nodeLimit: number | null; // null = 無制限
+  features: Feature[];
+}
+
+type Feature =
+  | 'export'
+  | 'custom_theme'
+  | 'advanced_filtering'
+  | 'layout_algorithm'
+  | 'mention_extraction';
 ```
 
 #### GraphData（グラフデータ）
@@ -478,8 +731,10 @@ interface AuthResponse {
 ```typescript
 interface User {
   id: string; // ユーザーID
-  email: string; // メールアドレス
-  passwordHash: string; // パスワードハッシュ
+  email: string; // Googleアカウントのメールアドレス
+  name: string; // Googleアカウントの名前
+  picture: string; // Googleアカウントのプロフィール画像URL
+  plan: 'free' | 'pro'; // サブスクリプションプラン
   createdAt: Date; // 作成日時
   updatedAt: Date; // 更新日時
 }
@@ -507,13 +762,41 @@ interface Page {
 }
 ```
 
+#### Block（Notionブロック）
+
+```typescript
+interface Block {
+  id: string; // ブロックID
+  type: string; // ブロックタイプ（paragraph, heading_1, etc.）
+  content: RichText[]; // リッチテキストコンテンツ
+}
+
+interface RichText {
+  type: 'text' | 'mention' | 'equation';
+  text?: TextContent;
+  mention?: MentionContent;
+  plain_text: string;
+}
+
+interface TextContent {
+  content: string;
+  link?: { url: string };
+}
+
+interface MentionContent {
+  type: 'page' | 'database' | 'user' | 'date';
+  page?: { id: string };
+}
+```
+
 #### Relation（リレーション）
 
 ```typescript
 interface Relation {
   sourcePageId: string; // リレーション元ページID
   targetPageId: string; // リレーション先ページID
-  propertyName: string; // リレーションプロパティ名
+  propertyName?: string; // リレーションプロパティ名（プロパティベースの場合）
+  type: 'property' | 'mention'; // リレーションタイプ
 }
 ```
 
@@ -558,8 +841,19 @@ interface View {
   zoomLevel: number; // ズームレベル
   panX: number; // パン位置X
   panY: number; // パン位置Y
+  extractionMode: RelationExtractionMode; // リレーション抽出モード
   createdAt: Date; // 作成日時
   updatedAt: Date; // 更新日時
+}
+```
+
+#### GoogleUser（Googleユーザー情報）
+
+```typescript
+interface GoogleUser {
+  email: string; // メールアドレス
+  name: string; // 名前
+  picture: string; // プロフィール画像URL
 }
 ```
 
@@ -674,6 +968,54 @@ interface View {
 *任意の*ページIDのリストに対して、バッチ処理を使用すると、API呼び出し回数が個別リクエストよりも少なくなる
 
 検証対象: 要件 8.4
+
+### プロパティ19: Google OIDC認証の一貫性
+
+*任意の*Google IDトークンに対して、有効なトークンであれば認証が成功し、無効なトークンであればエラーが返される
+
+検証対象: 要件 1（subscription-management）
+
+### プロパティ20: テーマ設定の永続性
+
+*任意の*テーマモード（light, dark, system）に対して、設定を保存してから読み込むと、同じテーマモードが返される
+
+検証対象: 要件 10.7
+
+### プロパティ21: システムテーマ検出の正確性
+
+*任意の*システムテーマ設定に対して、「システム依存」モードを選択すると、OSまたはブラウザのテーマ設定と一致するテーマが適用される
+
+検証対象: 要件 10.4, 10.5
+
+### プロパティ22: リレーション抽出モードの制限
+
+*任意の*Free_Planユーザーに対して、メンションベースまたは両方のリレーション抽出モードへのアクセスは拒否される
+
+検証対象: 要件 9.2
+
+### プロパティ23: メンション抽出の完全性
+
+*任意の*ページに対して、メンションベースの抽出を実行すると、そのページのブロックコンテンツ内のすべてのページメンションが抽出される
+
+検証対象: 要件 9.3, 9.4
+
+### プロパティ24: リレーション重複排除
+
+*任意の*リレーションのセットに対して、「両方」モードで抽出すると、同じsourcePageIdとtargetPageIdの組み合わせは1つのみ含まれる
+
+検証対象: 要件 9.5
+
+### プロパティ25: プラン制限の適用
+
+*任意の*Free_Planユーザーに対して、ビュー作成数が1を超える場合、新しいビュー作成は拒否される
+
+検証対象: 要件 6（subscription-management）
+
+### プロパティ26: ノード制限の適用
+
+*任意の*Free_Planユーザーに対して、グラフに100を超えるノードが含まれる場合、最初の100ノードのみが表示される
+
+検証対象: 要件 7（subscription-management）
 
 ## エラーハンドリング
 
@@ -851,7 +1193,9 @@ interface View {
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email VARCHAR(255) UNIQUE NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  picture TEXT,
+  plan VARCHAR(10) DEFAULT 'free' CHECK (plan IN ('free', 'pro')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -873,6 +1217,7 @@ CREATE TABLE views (
   zoom_level FLOAT DEFAULT 1.0,
   pan_x FLOAT DEFAULT 0.0,
   pan_y FLOAT DEFAULT 0.0,
+  extraction_mode VARCHAR(20) DEFAULT 'property' CHECK (extraction_mode IN ('property', 'mention', 'both')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -884,6 +1229,10 @@ CREATE TABLE cached_graph_data (
   cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   expires_at TIMESTAMP NOT NULL
 );
+
+-- インデックス
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_views_user_id ON views(user_id);
 ```
 
 ## セキュリティ考慮事項
@@ -896,10 +1245,11 @@ CREATE TABLE cached_graph_data (
 
 ### 認証・認可
 
-- パスワードはbcryptでハッシュ化（ソルト付き）
+- Google OIDC認証のみを使用（パスワード管理なし）
 - セッショントークンはJWTで管理
 - HTTPOnly Cookieでセッショントークンを保存（XSS対策）
 - CSRF対策（CSRFトークンまたはSameSite Cookie）
+- Authorization Code Flow with PKCEを使用
 
 ### 通信セキュリティ
 
@@ -939,4 +1289,7 @@ CREATE TABLE cached_graph_data (
 - `JWT_SECRET`: JWT署名用シークレット
 - `ENCRYPTION_KEY`: トークン暗号化用キー
 - `FRONTEND_URL`: フロントエンドURL（CORS設定用）
+- `GOOGLE_CLIENT_ID`: Google OIDCクライアントID
+- `GOOGLE_CLIENT_SECRET`: Google OIDCクライアントシークレット
+- `GOOGLE_REDIRECT_URI`: Google OIDC認証後のリダイレクトURI
 - `REDIS_URL`: Redisキャッシュ接続URL（オプション）
