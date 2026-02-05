@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     # Redis (optional)
     REDIS_URL: str = "redis://localhost:6379"
 
+    # Notion API Timeouts (seconds)
+    NOTION_TIMEOUT_DATABASE_LIST: float = 60.0
+    NOTION_TIMEOUT_DATABASE_QUERY: float = 90.0
+    NOTION_TIMEOUT_PAGE_FETCH: float = 30.0
+
     class Config:
         env_file = ".env"
 
