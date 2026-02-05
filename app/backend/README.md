@@ -13,7 +13,7 @@ FastAPI backend for the Notion Relation View application.
 ## Directory Structure
 
 ```
-server/
+backend/
 ├── alembic/              # Database migrations
 │   ├── versions/         # Migration files
 │   └── env.py           # Alembic environment
