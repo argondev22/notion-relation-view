@@ -2,9 +2,10 @@
 Graph Service for transforming Notion data into graph format.
 """
 import logging
-from typing import List, Dict, Any, Set, Union
+from typing import List, Dict, Any, Set, Union, Callable
 from sqlalchemy.orm import Session
 from uuid import UUID
+from datetime import datetime, timezone
 
 from app.services.notion_client import notion_client, NotionAPIError
 from app.services.cache_manager import cache_manager
@@ -51,6 +52,121 @@ class GraphService:
         await cache_manager.cache_graph_data(db, user_id, graph_data)
 
         return graph_data
+
+    async def get_graph_data_progressive(
+        self,
+        db: Session,
+        user_id: Union[str, UUID],
+        yield_progress: Callable[[Dict[str, Any]], None]
+    ) -> Dict[str, Any]:
+        """
+        Get graph data with progressive loading and progress callbacks.
+
+        This method implements progressive data loading by:
+        1. Returning cached data immediately if available
+        2. Fetching fresh data from Notion API
+        3. Yielding progress updates as each database completes
+
+        Args:
+            db: Database session
+            user_id: User ID (string or UUID)
+            yield_progress: Callback function to report progress updates.
+                           Called with dict containing progress information.
+
+        Returns:
+            Complete graph data with metadata about failures:
+            {
+                "nodes": [...],
+                "edges": [...],
+                "databases": [...],
+                "metadata": {
+                    "total_databases": int,
+                    "successful_databases": int,
+                    "failed_databases": [{"id": str, "title": str, "error": str}, ...],
+                    "fetched_at": str (ISO format)
+                }
+            }
+
+        Raises:
+            Exception: If token not found or critical errors occur
+        """
+        # Get all cached database data first
+        cached_databases = await cache_manager.get_all_cached_databases(db, user_id)
+
+        if cached_databases:
+            # Merge cached data and yield immediately
+            cached_graph = self._merge_database_data(cached_databases)
+
+            # Find the most recent cache timestamp
+            cached_at = None
+            for db_data in cached_databases.values():
+                # The data structure includes pages and database info
+                # We need to check if there's a cached_at timestamp
+                if isinstance(db_data, dict):
+                    # For now, use current time as we don't store cached_at in the data itself
+                    # The CachedDatabaseData model has cached_at but it's not in the returned data
+                    pass
+
+            yield_progress({
+                "type": "cached_data",
+                "data": cached_graph,
+                "message": "Showing cached data while fetching updates"
+            })
+            logger.info(f"Yielded cached data for user {user_id} with {len(cached_databases)} databases")
+
+        # Fetch fresh data with progress updates
+        logger.info(f"Fetching fresh graph data progressively for user {user_id}")
+        result = await self._fetch_and_transform_data_progressive(
+            db, user_id, yield_progress
+        )
+
+        return result
+
+    def _merge_database_data(
+        self,
+        cached_databases: Dict[str, Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Merge per-database cached data into complete graph structure.
+
+        Args:
+            cached_databases: Dictionary mapping database_id to cached data
+                             Each entry should have 'pages' and 'database' keys
+
+        Returns:
+            Complete graph data with nodes, edges, and databases
+        """
+        # Collect all pages and databases from cached data
+        all_pages = []
+        all_databases = []
+
+        for database_id, db_data in cached_databases.items():
+            if isinstance(db_data, dict):
+                # Extract pages
+                pages = db_data.get('pages', [])
+                all_pages.extend(pages)
+
+                # Extract database info
+                database = db_data.get('database')
+                if database:
+                    all_databases.append(database)
+
+        # Transform data into graph format
+        nodes = self._transform_pages_to_nodes(all_pages)
+        edges = self._transform_relations_to_edges(all_pages)
+        database_list = self._transform_databases(all_databases)
+
+        logger.info(
+            f"Merged cached data: {len(all_pages)} pages, "
+            f"{len(nodes)} nodes, {len(edges)} edges, "
+            f"{len(database_list)} databases"
+        )
+
+        return {
+            "nodes": nodes,
+            "edges": edges,
+            "databases": database_list
+        }
 
     async def _fetch_and_transform_data(
         self,
@@ -106,6 +222,167 @@ class GraphService:
             "edges": edges,
             "databases": database_list
         }
+
+    async def _fetch_and_transform_data_progressive(
+        self,
+        db: Session,
+        user_id: Union[str, UUID],
+        yield_progress: Callable[[Dict[str, Any]], None]
+    ) -> Dict[str, Any]:
+        """
+        Fetch data progressively, yielding results as databases complete.
+
+        This method fetches data from multiple databases and yields progress
+        updates after each database completes. It handles failures gracefully
+        by continuing with remaining databases and using cached data as fallback.
+
+        Args:
+            db: Database session
+            user_id: User ID
+            yield_progress: Callback function to report progress
+
+        Returns:
+            Complete graph data with metadata:
+            {
+                "nodes": [...],
+                "edges": [...],
+                "databases": [...],
+                "metadata": {
+                    "total_databases": int,
+                    "successful_databases": int,
+                    "failed_databases": [{"id": str, "title": str, "error": str}, ...],
+                    "fetched_at": str (ISO format)
+                }
+            }
+
+        Raises:
+            Exception: If token not found
+        """
+        # Get user's Notion token
+        stored_token = db.query(NotionToken).filter(
+            NotionToken.user_id == user_id
+        ).first()
+
+        if not stored_token:
+            raise Exception("No Notion token found for user")
+
+        # Decrypt token
+        token = auth_service.decrypt_notion_token(stored_token.encrypted_token)
+
+        # Fetch databases
+        databases = await notion_client.get_databases(token)
+        total_databases = len(databases)
+        logger.info(f"Fetched {total_databases} databases for progressive loading")
+
+        # Yield progress: databases fetched
+        yield_progress({
+            "type": "databases_fetched",
+            "total": total_databases
+        })
+
+        # Fetch pages from each database with progress tracking
+        all_pages = []
+        successful_databases = []
+        failed_databases = []
+
+        for idx, database in enumerate(databases):
+            database_id = database["id"]
+            database_title = database.get("title", "Untitled")
+
+            try:
+                # Fetch pages for this database
+                pages = await notion_client.get_pages(token, database_id)
+                all_pages.extend(pages)
+                successful_databases.append(database)
+
+                # Cache this database's data
+                await cache_manager.cache_database_data(
+                    db, user_id, database_id,
+                    {"pages": pages, "database": database}
+                )
+
+                # Yield progress: database completed
+                yield_progress({
+                    "type": "database_completed",
+                    "database_id": database_id,
+                    "database_name": database_title,
+                    "page_count": len(pages),
+                    "progress": (idx + 1) / total_databases
+                })
+
+                logger.info(
+                    f"Successfully fetched {len(pages)} pages from database "
+                    f"{database_id} ({idx + 1}/{total_databases})"
+                )
+
+            except NotionAPIError as e:
+                error_msg = str(e)
+                logger.warning(
+                    f"Failed to fetch pages from database {database_id} "
+                    f"({database_title}): {error_msg}"
+                )
+
+                # Try to use cached data for this database
+                cached_db_data = await cache_manager.get_database_data(
+                    db, user_id, database_id
+                )
+
+                if cached_db_data:
+                    # Use cached data as fallback
+                    cached_pages = cached_db_data.get("pages", [])
+                    all_pages.extend(cached_pages)
+                    successful_databases.append(database)
+
+                    # Yield progress: using cached data
+                    yield_progress({
+                        "type": "database_from_cache",
+                        "database_id": database_id,
+                        "database_name": database_title,
+                        "page_count": len(cached_pages),
+                        "progress": (idx + 1) / total_databases
+                    })
+
+                    logger.info(
+                        f"Using cached data for database {database_id} "
+                        f"({len(cached_pages)} pages)"
+                    )
+                else:
+                    # No cached data available, record as failed
+                    failed_databases.append({
+                        "id": database_id,
+                        "title": database_title,
+                        "error": error_msg
+                    })
+
+                    logger.warning(
+                        f"No cached data available for failed database {database_id}"
+                    )
+
+        # Transform all collected data
+        nodes = self._transform_pages_to_nodes(all_pages)
+        edges = self._transform_relations_to_edges(all_pages)
+        database_list = self._transform_databases(successful_databases)
+
+        # Build result with metadata
+        result = {
+            "nodes": nodes,
+            "edges": edges,
+            "databases": database_list,
+            "metadata": {
+                "total_databases": total_databases,
+                "successful_databases": len(successful_databases),
+                "failed_databases": failed_databases,
+                "fetched_at": datetime.now(timezone.utc).isoformat()
+            }
+        }
+
+        logger.info(
+            f"Progressive fetch complete: {len(successful_databases)}/{total_databases} "
+            f"databases successful, {len(failed_databases)} failed, "
+            f"{len(nodes)} nodes, {len(edges)} edges"
+        )
+
+        return result
 
     def _transform_pages_to_nodes(
         self,
