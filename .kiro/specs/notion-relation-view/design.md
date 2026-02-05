@@ -18,7 +18,7 @@ notion-relation-viewは、Notionのページ間のリレーションを視覚的
 
 6. **データキャッシュ**: バックエンドでNotion APIから取得したデータをキャッシュし、API呼び出しを最小化します。これにより、レート制限を回避し、レスポンス速度を向上させます。
 
-7. **リレーション抽出の柔軟性**: リレーションプロパティベースの抽出（Free/Pro共通）とページメンションベースの抽出（Pro限定）の両方をサポートします。Strategy パターンを使用して実装を切り替え可能にします。
+7. **リレーション抽出の柔軟性**: リレーションプロパティベースの抽出とページメンションベースの抽出の両方をサポートします。Strategy パターンを使用して実装を切り替え可能にします。機能アクセス制御はPlan_Enforcerが担当します。
 
 8. **テーマ管理**: ライトモード、ダークモード、システム依存の3つのテーマオプションを提供します。ユーザーの好みや環境に合わせた視覚体験を実現します。
 
@@ -96,7 +96,7 @@ sequenceDiagram
     Frontend->>User: グラフを表示
 ```
 
-#### ページメンション抽出フロー（Pro限定）
+#### ページメンション抽出フロー
 
 ```mermaid
 sequenceDiagram
@@ -109,10 +109,10 @@ sequenceDiagram
 
     User->>Frontend: リレーション抽出モードを「メンション」に変更
     Frontend->>Backend: 抽出モード変更を要求
-    Backend->>PlanEnforcer: ユーザープランを確認
-    PlanEnforcer->>Backend: プラン情報を返す
+    Backend->>PlanEnforcer: 機能アクセス権を確認
+    PlanEnforcer->>Backend: アクセス権結果を返す
 
-    alt Pro Plan
+    alt アクセス許可
         Backend->>Backend: 抽出モードを保存
         Backend->>Frontend: 変更成功を返す
         User->>Frontend: グラフデータを要求
@@ -131,9 +131,9 @@ sequenceDiagram
         Backend->>Backend: リレーションを構築（重複排除）
         Backend->>Frontend: グラフデータを返す
         Frontend->>User: グラフを表示
-    else Free Plan
+    else アクセス拒否
         Backend->>Frontend: アクセス拒否エラーを返す
-        Frontend->>User: Pro限定機能の通知を表示
+        Frontend->>User: 機能制限の通知を表示
     end
 ```
 
@@ -306,29 +306,6 @@ flowchart TD
     style ShowURL fill:#e1f5e1
 ```
 
-**Pro機能アクセスフロー**:
-
-```mermaid
-flowchart TD
-    User[ユーザー] --> ProFeature{Pro機能にアクセス}
-    ProFeature --> CheckPlan{プラン確認}
-    CheckPlan -->|Pro Plan| Allow[機能利用可能]
-    CheckPlan -->|Free Plan| Block[アクセス拒否]
-    Block --> ShowModal[アップグレードモーダル]
-    ShowModal --> UserChoice{ユーザー選択}
-    UserChoice -->|今すぐアップグレード| Payment[決済画面へ]
-    UserChoice -->|後で| Dashboard[ダッシュボードに戻る]
-    Payment --> Success{決済成功?}
-    Success -->|成功| UpdatePlan[プランをProに更新]
-    Success -->|失敗| Dashboard
-    UpdatePlan --> Allow
-    Allow --> UseFeature[機能使用]
-
-    style Allow fill:#e1f5e1
-    style UseFeature fill:#e1f5e1
-    style Block fill:#ffe1e1
-```
-
 **エラーハンドリングフロー**:
 
 ```mermaid
@@ -437,9 +414,7 @@ flowchart TD
 |                        |                                         |
 | Filters                |                                         |
 | Extraction Mode: ▼     |                                         |
-| • Property only        |                                         |
-| • Mention only [Pro]   |                                         |
-| • Both [Pro]           |                                         |
+| (選択可能なモード)      |                                         |
 |                        |                                         |
 +------------------------+-----------------------------------------+
 | Status: 150 nodes, 230 edges | Zoom: 100% | FPS: 60            |
@@ -487,9 +462,7 @@ flowchart TD
 | ☐ Archive                                |
 |                                          |
 | Relation Extraction Mode                 |
-| ○ Property only                          |
-| ○ Mention only [Pro Badge]               |
-| ○ Both [Pro Badge]                       |
+| (選択可能なモード)                        |
 |                                          |
 | [Cancel]                  [Create View]  |
 |                                          |
@@ -500,7 +473,6 @@ flowchart TD
 - ビュー名入力
 - データベース選択（複数選択可能）
 - リレーション抽出モード選択
-- Pro機能にはバッジ表示
 - キャンセル・作成ボタン
 
 #### 5. 設定画面（モーダル）
@@ -517,7 +489,7 @@ flowchart TD
 |                                          |
 | Account                                  |
 |   Email: user@example.com                |
-|   Plan: Free [Upgrade to Pro]            |
+|   Plan: (プラン情報)                      |
 |                                          |
 | Notion Integration                       |
 |   Token: ••••••••••••••                  |
@@ -533,7 +505,7 @@ flowchart TD
 
 **セクション**:
 - **Appearance**: テーマ設定
-- **Account**: ユーザー情報、プラン
+- **Account**: ユーザー情報、サブスクリプション情報
 - **Notion Integration**: トークン管理
 - **About**: バージョン、ドキュメント
 
@@ -931,7 +903,7 @@ interface UIController {
 2. ユーザーがボタンをクリックし、Google OIDCフローを開始
 3. Googleで認証完了後、コールバックURLにリダイレクト
 4. バックエンドでIDトークンを検証し、ユーザー情報を取得
-5. 初回ログインの場合、新規ユーザーアカウントを作成し、Free_Planを割り当て
+5. 初回ログインの場合、新規ユーザーアカウントを作成
 6. セッショントークンを発行し、Notion Integration Token入力画面を表示
 7. トークンを入力し、バックエンドに保存
 8. グラフビューを表示
@@ -1633,9 +1605,9 @@ interface GoogleUser {
 
 検証対象: 要件 10.4, 10.5
 
-### プロパティ22: リレーション抽出モードの制限
+### プロパティ22: リレーション抽出モードのアクセス制御
 
-*任意の*Free_Planユーザーに対して、メンションベースまたは両方のリレーション抽出モードへのアクセスは拒否される
+*任意の*ユーザーとリレーション抽出モードに対して、ユーザーが該当モードへのアクセス権を持たない場合、アクセスは拒否される
 
 検証対象: 要件 9.2
 
@@ -1651,15 +1623,15 @@ interface GoogleUser {
 
 検証対象: 要件 9.5
 
-### プロパティ25: プラン制限の適用
+### プロパティ25: ビュー作成制限の適用
 
-*任意の*Free_Planユーザーに対して、ビュー作成数が1を超える場合、新しいビュー作成は拒否される
+*任意の*ユーザーに対して、ユーザーのプランで許可されたビュー作成数を超える場合、新しいビュー作成は拒否される
 
 検証対象: 要件 6（subscription-management）
 
-### プロパティ26: ノード制限の適用
+### プロパティ26: ノード表示制限の適用
 
-*任意の*Free_Planユーザーに対して、グラフに100を超えるノードが含まれる場合、最初の100ノードのみが表示される
+*任意の*ユーザーに対して、ユーザーのプランで許可されたノード数を超える場合、制限内のノードのみが表示される
 
 検証対象: 要件 7（subscription-management）
 
