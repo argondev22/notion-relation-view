@@ -39,16 +39,76 @@ def create_access_token(user_id: str, expires_delta: Optional[timedelta] = None)
     return encoded_jwt
 
 
-# JWTトークンを検証してペイロードを返す
 def verify_token(token: str) -> dict:
-    pass
+    """
+    Verify and decode JWT token
 
+    Args:
+        token: JWT token string
 
-# Notion APIトークンをAES-256-GCMで暗号化
+    Returns:
+        Decoded token payload
+
+    Raises:
+        jwt.ExpiredSignatureError: Token has expired
+        jwt.InvalidTokenError: Token is invalid
+    """
+    payload = jwt.decode(
+        token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
+    )
+    return payload
+
+def _get_encryption_key() -> bytes:
+    """
+    Derive encryption key from settings using PBKDF2
+
+    Returns:
+        32-byte encryption key suitable for Fernet
+    """
+    kdf = PBKDF2(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=b"notion-relation-view-salt",
+        iterations=100000,
+    )
+    key = base64.urlsafe_b64encode(kdf.derive(settings.ENCRYPTION_KEY.encode()))
+    return key
+
 def encrypt_notion_token(token: str) -> str:
-    pass
+    """
+    Encrypt Notion API token using AES-256-GCM (via Fernet)
+
+    Args:
+        token: Plain text Notion API token
+
+    Returns:
+        Encrypted token as base64 string
+    """
+    key = _get_encryption_key()
+    fernet = Fernet(key)
+    encrypted = fernet.encrypt(token.encode())
+    return encrypted.decode()
 
 
 # 暗号化されたトークンを復号化
 def decrypt_notion_token(encrypted_token: str) -> str:
-    pass
+    """
+    Decrypt Notion API token
+
+    Args:
+        encrypted_token: Encrypted token string with salt
+
+    Returns:
+        Decrypted plain text token
+    """
+    # base64デコード
+    combined = base64.urlsafe_b64decode(encrypted_token.encode())
+
+    # saltと暗号化データを分離
+    salt = combined[:16]
+    encrypted = combined[16:]
+
+    key = _get_encryption_key(salt)
+    fernet = Fernet(key)
+    decrypted = fernet.decrypt(encrypted)
+    return decrypted.decode()
