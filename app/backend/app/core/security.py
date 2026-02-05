@@ -4,13 +4,17 @@ Security utilities for JWT and encryption
 
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Dict, Any
 import jwt
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
 import base64
 from app.core.config import settings
+
+SALT_LENGTH = 16  # bytes
+KEY_LENGTH = 32  # bytes
+KDF_ITERATIONS = 100_000
 
 
 def create_access_token(user_id: str, expires_delta: Optional[timedelta] = None) -> str:
@@ -40,7 +44,7 @@ def create_access_token(user_id: str, expires_delta: Optional[timedelta] = None)
     return encoded_jwt
 
 
-def verify_token(token: str) -> dict:
+def verify_token(token: str) -> Dict[str, Any]:
     """
     Verify and decode JWT token
 
@@ -72,9 +76,9 @@ def _get_encryption_key(salt: bytes) -> bytes:
     """
     kdf = PBKDF2(
         algorithm=hashes.SHA256(),
-        length=32,
+        length=KEY_LENGTH,
         salt=salt,
-        iterations=100000,
+        iterations=KDF_ITERATIONS,
     )
     key = base64.urlsafe_b64encode(kdf.derive(settings.ENCRYPTION_KEY.encode()))
     return key
@@ -90,7 +94,10 @@ def encrypt_notion_token(token: str) -> str:
     Returns:
         Encrypted token with salt as base64 string
     """
-    salt = os.urandom(16)
+    if not token or not token.strip():
+        raise ValueError("Token cannot be empty")
+
+    salt = os.urandom(SALT_LENGTH)
 
     key = _get_encryption_key(salt)
     fernet = Fernet(key)
@@ -110,12 +117,18 @@ def decrypt_notion_token(encrypted_token: str) -> str:
     Returns:
         Decrypted plain text token
     """
-    combined = base64.urlsafe_b64decode(encrypted_token.encode())
+    try:
+        combined = base64.urlsafe_b64decode(encrypted_token.encode())
 
-    salt = combined[:16]
-    encrypted = combined[16:]
+        if len(combined) < SALT_LENGTH:
+            raise ValueError("Invalid encrypted token: too short")
 
-    key = _get_encryption_key(salt)
-    fernet = Fernet(key)
-    decrypted = fernet.decrypt(encrypted)
-    return decrypted.decode()
+        salt = combined[:SALT_LENGTH]
+        encrypted = combined[SALT_LENGTH:]
+
+        key = _get_encryption_key(salt)
+        fernet = Fernet(key)
+        decrypted = fernet.decrypt(encrypted)
+        return decrypted.decode()
+    except Exception as e:
+        raise ValueError(f"Failed to decrypt token: {str(e)}")
