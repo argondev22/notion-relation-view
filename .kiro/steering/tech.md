@@ -32,6 +32,11 @@
 ### Project Initialization
 ```bash
 make init              # Initialize project (first time setup)
+                       # - Creates .env file
+                       # - Builds containers
+                       # - Starts services
+                       # - Runs migrations
+                       # - Checks health
 ```
 
 ### Docker Operations
@@ -43,6 +48,7 @@ make logs              # View all logs
 make logs-backend      # View backend logs only
 make logs-frontend     # View frontend logs only
 make restart           # Restart all services
+make health            # Check service health
 ```
 
 ### Development

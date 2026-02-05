@@ -78,16 +78,18 @@ sequenceDiagram
    make init
    ```
 
-3. **Open in Dev Container**
-   - Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac) in VSCode
-   - Type `Dev Containers: Open Folder in Container`
-   - Select and execute the command
+   This command will:
+   - Create `.env` file from `.env.example`
+   - Build Docker containers
+   - Start all services
+   - Run database migrations
+   - Check service health
 
-4. **Start the development environment**
+3. **Configure Google OAuth** (required for authentication)
+   - Edit `app/.env` and add your Google OAuth credentials
+   - Restart services: `make restart`
 
-   ```bash
-   make up
-   ```
-
-5. **Access your application**
-   - Open your browser and navigate to: `http://localhost:3000`
+4. **Access your application**
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Docs: http://localhost:8000/docs

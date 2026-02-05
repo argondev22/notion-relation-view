@@ -6,7 +6,7 @@
 
 ## タスク
 
-- [ ] 1. プロジェクト構造とコア設定のセットアップ
+- [x] 1. プロジェクト構造とコア設定のセットアップ
   - プロジェクトディレクトリ構造を作成
   - フロントエンド（React + TypeScript + Vite）とバックエンド（FastAPI + Python）の初期設定
   - 開発環境用のDocker Compose設定（PostgreSQL、Redis）
