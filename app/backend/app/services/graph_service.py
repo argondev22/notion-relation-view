@@ -407,9 +407,6 @@ class GraphService:
                 "edge_count": len(edges)
             }
         )
-            f"databases successful, {len(failed_databases)} failed, "
-            f"{len(nodes)} nodes, {len(edges)} edges"
-        )
 
         return result
 
