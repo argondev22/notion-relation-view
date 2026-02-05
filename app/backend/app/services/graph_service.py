@@ -319,7 +319,14 @@ class GraphService:
                 error_msg = str(e)
                 logger.warning(
                     f"Failed to fetch pages from database {database_id} "
-                    f"({database_title}): {error_msg}"
+                    f"({database_title}): {error_msg}",
+                    extra={
+                        "database_id": database_id,
+                        "database_title": database_title,
+                        "error": error_msg,
+                        "attempt": idx + 1,
+                        "total": total_databases
+                    }
                 )
 
                 # Try to use cached data for this database
@@ -344,7 +351,13 @@ class GraphService:
 
                     logger.info(
                         f"Using cached data for database {database_id} "
-                        f"({len(cached_pages)} pages)"
+                        f"({len(cached_pages)} pages)",
+                        extra={
+                            "database_id": database_id,
+                            "database_title": database_title,
+                            "cached_page_count": len(cached_pages),
+                            "fallback": True
+                        }
                     )
                 else:
                     # No cached data available, record as failed
@@ -355,7 +368,12 @@ class GraphService:
                     })
 
                     logger.warning(
-                        f"No cached data available for failed database {database_id}"
+                        f"No cached data available for failed database {database_id}",
+                        extra={
+                            "database_id": database_id,
+                            "database_title": database_title,
+                            "has_cache": False
+                        }
                     )
 
         # Transform all collected data
@@ -378,6 +396,17 @@ class GraphService:
 
         logger.info(
             f"Progressive fetch complete: {len(successful_databases)}/{total_databases} "
+            f"databases successful, {len(failed_databases)} failed, "
+            f"{len(nodes)} nodes, {len(edges)} edges",
+            extra={
+                "total_databases": total_databases,
+                "successful_databases": len(successful_databases),
+                "failed_databases_count": len(failed_databases),
+                "failed_database_ids": [db["id"] for db in failed_databases],
+                "node_count": len(nodes),
+                "edge_count": len(edges)
+            }
+        )
             f"databases successful, {len(failed_databases)} failed, "
             f"{len(nodes)} nodes, {len(edges)} edges"
         )

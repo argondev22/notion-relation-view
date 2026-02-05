@@ -109,6 +109,21 @@ def with_retry(
                     last_exception = e
                     error_type = type(e).__name__
 
+                    # Log timeout with detailed context
+                    if isinstance(e, httpx.TimeoutException):
+                        logger.error(
+                            f"[{correlation_id}] Timeout in {func.__name__}: "
+                            f"Operation timed out after attempt {attempt + 1}/{max_retries + 1}. "
+                            f"Error: {error_type}: {str(e)}",
+                            extra={
+                                "correlation_id": correlation_id,
+                                "operation": func.__name__,
+                                "error_type": error_type,
+                                "attempt": attempt + 1,
+                                "max_retries": max_retries + 1
+                            }
+                        )
+
                     # Don't retry if we've exhausted all attempts
                     if attempt == max_retries:
                         logger.error(
@@ -126,7 +141,13 @@ def with_retry(
                     logger.warning(
                         f"[{correlation_id}] Attempt {attempt + 1}/{max_retries + 1} failed "
                         f"for {func.__name__}: {error_type}: {str(e)}. "
-                        f"Retrying in {delay:.2f}s..."
+                        f"Retrying in {delay:.2f}s...",
+                        extra={
+                            "correlation_id": correlation_id,
+                            "operation": func.__name__,
+                            "attempt": attempt + 1,
+                            "backoff_delay": delay
+                        }
                     )
 
                     await asyncio.sleep(delay)
@@ -229,12 +250,14 @@ class NotionAPIClient:
             "Content-Type": "application/json"
         }
 
-    def _handle_error_response(self, response: httpx.Response) -> None:
+    def _handle_error_response(self, response: httpx.Response, operation: str = "unknown", database_id: str = None) -> None:
         """
-        Handle error responses from Notion API.
+        Handle error responses from Notion API with comprehensive logging.
 
         Args:
             response: HTTP response object
+            operation: Type of operation being performed (e.g., "get_databases", "get_pages")
+            database_id: Database ID if applicable
 
         Raises:
             InvalidTokenError: If token is invalid (401)
@@ -243,6 +266,8 @@ class NotionAPIClient:
             NotionAPIError: For other API errors
         """
         status_code = response.status_code
+        request_url = str(response.request.url)
+        request_method = response.request.method
 
         try:
             error_data = response.json()
@@ -252,8 +277,26 @@ class NotionAPIClient:
             error_message = response.text or "Unknown error"
             error_code = "unknown"
 
+        # Comprehensive error logging with all required fields
+        log_context = {
+            "operation": operation,
+            "request_url": request_url,
+            "request_method": request_method,
+            "status_code": status_code,
+            "error_code": error_code,
+            "error_message": error_message,
+        }
+
+        if database_id:
+            log_context["database_id"] = database_id
+
         logger.error(
-            f"Notion API error: status={status_code}, code={error_code}, message={error_message}"
+            f"Notion API error - Operation: {operation}, "
+            f"URL: {request_url}, Method: {request_method}, "
+            f"Status: {status_code}, Code: {error_code}, "
+            f"Message: {error_message}" +
+            (f", Database: {database_id}" if database_id else ""),
+            extra=log_context
         )
 
         if status_code == 401:

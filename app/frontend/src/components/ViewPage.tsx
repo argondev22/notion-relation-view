@@ -8,12 +8,29 @@ import DatabaseFilter from "./DatabaseFilter";
 import LoadingSpinner from "./LoadingSpinner";
 import ErrorMessage from "./ErrorMessage";
 
+interface LoadingProgress {
+  type: string;
+  total?: number;
+  progress?: number;
+  database_name?: string;
+  page_count?: number;
+  message?: string;
+}
+
+interface FailedDatabase {
+  id: string;
+  title: string;
+  error: string;
+}
+
 const ViewPage: React.FC = () => {
   const { viewId } = useParams<{ viewId: string }>();
   const [view, setView] = useState<View | null>(null);
   const [graphData, setGraphData] = useState<GraphData | null>(null);
   const [filteredData, setFilteredData] = useState<GraphData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState<LoadingProgress | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -27,6 +44,8 @@ const ViewPage: React.FC = () => {
     try {
       setLoading(true);
       setError("");
+      setWarnings([]);
+      setLoadingProgress(null);
 
       // Try to fetch view details (requires auth)
       let fetchedView: View | null = null;
@@ -38,14 +57,36 @@ const ViewPage: React.FC = () => {
         console.warn("Could not fetch view details (may not be authenticated):", viewErr);
       }
 
-      // Fetch graph data (public endpoint)
-      console.log("Fetching graph data...");
+      // Try streaming endpoint first
+      const streamingSupported = typeof EventSource !== 'undefined';
+
+      if (streamingSupported) {
+        try {
+          console.log("Attempting streaming endpoint...");
+          await loadViewWithStreaming(id, fetchedView);
+          return;
+        } catch (streamErr) {
+          console.warn("Streaming failed, falling back to regular endpoint:", streamErr);
+        }
+      }
+
+      // Fallback to non-streaming endpoint
+      console.log("Fetching graph data (non-streaming)...");
       const fetchedData = await viewApi.getViewGraphData(id);
       console.log("Graph data fetched:", fetchedData);
 
       setView(fetchedView);
       setGraphData(fetchedData);
       setFilteredData(fetchedData);
+
+      // Check for failed databases in metadata
+      if (fetchedData.metadata?.failed_databases && fetchedData.metadata.failed_databases.length > 0) {
+        const failedNames = fetchedData.metadata.failed_databases
+          .map((db: FailedDatabase) => db.title)
+          .join(", ");
+        setWarnings([`Some databases failed to load: ${failedNames}`]);
+      }
+
       console.log("View loaded successfully");
     } catch (err: any) {
       console.error("Error loading view:", err);
@@ -61,7 +102,136 @@ const ViewPage: React.FC = () => {
       setError(errorMessage);
     } finally {
       setLoading(false);
+      setLoadingProgress(null);
       console.log("Loading complete, loading state:", false);
+    }
+  };
+
+  const loadViewWithStreaming = async (id: string, fetchedView: View | null): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const eventSource = new EventSource(`/api/views/${id}/data?stream=true`);
+      let hasReceivedData = false;
+
+      eventSource.onmessage = (event) => {
+        try {
+          const update = JSON.parse(event.data);
+          console.log("Streaming update:", update);
+
+          switch (update.type) {
+            case "cached_data":
+              // Show cached data immediately
+              setGraphData(update.data);
+              setFilteredData(update.data);
+              setLoadingProgress({
+                type: "cached",
+                message: "Showing cached data, fetching updates..."
+              });
+              hasReceivedData = true;
+              break;
+
+            case "databases_fetched":
+              setLoadingProgress({
+                type: "fetching",
+                total: update.total,
+                progress: 0
+              });
+              break;
+
+            case "database_completed":
+              setLoadingProgress({
+                type: "fetching",
+                progress: update.progress,
+                database_name: update.database_name,
+                page_count: update.page_count
+              });
+              break;
+
+            case "database_from_cache":
+              setWarnings(prev => [
+                ...prev,
+                `Using cached data for ${update.database_name} (fetch failed)`
+              ]);
+              setLoadingProgress({
+                type: "fetching",
+                progress: update.progress,
+                database_name: update.database_name,
+                page_count: update.page_count
+              });
+              break;
+
+            case "complete":
+              setView(fetchedView);
+              setGraphData(update.data);
+              setFilteredData(update.data);
+
+              // Show warnings for failed databases
+              if (update.data.metadata?.failed_databases && update.data.metadata.failed_databases.length > 0) {
+                const failedNames = update.data.metadata.failed_databases
+                  .map((db: FailedDatabase) => db.title)
+                  .join(", ");
+                setWarnings(prev => [
+                  ...prev,
+                  `Some databases failed to load: ${failedNames}`
+                ]);
+              }
+
+              setLoading(false);
+              setLoadingProgress(null);
+              eventSource.close();
+              hasReceivedData = true;
+              resolve();
+              break;
+
+            case "error":
+              console.error("Streaming error:", update.error);
+              eventSource.close();
+              reject(new Error(update.error));
+              break;
+          }
+        } catch (parseErr) {
+          console.error("Error parsing streaming update:", parseErr);
+        }
+      };
+
+      eventSource.onerror = (err) => {
+        console.error("EventSource error:", err);
+        eventSource.close();
+        if (!hasReceivedData) {
+          reject(new Error("Streaming connection failed"));
+        } else {
+          // If we already have data, just close gracefully
+          setLoading(false);
+          setLoadingProgress(null);
+          resolve();
+        }
+      };
+
+      // Timeout after 2 minutes
+      setTimeout(() => {
+        if (loading) {
+          eventSource.close();
+          reject(new Error("Streaming timeout"));
+        }
+      }, 120000);
+    });
+  };
+
+  const getLoadingMessage = (progress: LoadingProgress | null): string => {
+    if (!progress) return "Loading view...";
+
+    switch (progress.type) {
+      case "cached":
+        return progress.message || "Showing cached data, fetching updates...";
+      case "fetching":
+        if (progress.database_name) {
+          return `Loading ${progress.database_name} (${progress.page_count} pages)...`;
+        }
+        if (progress.progress !== undefined) {
+          return `Loading databases... ${Math.round(progress.progress * 100)}%`;
+        }
+        return "Loading databases...";
+      default:
+        return "Loading view...";
     }
   };
 
@@ -141,7 +311,12 @@ const ViewPage: React.FC = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading view..." />;
+    return (
+      <LoadingSpinner
+        message={getLoadingMessage(loadingProgress)}
+        progress={loadingProgress?.progress}
+      />
+    );
   }
 
   if (error) {
@@ -154,6 +329,26 @@ const ViewPage: React.FC = () => {
 
   return (
     <div className="view-page">
+      {warnings.length > 0 && (
+        <div className="warning-banner">
+          <div className="warning-content">
+            <strong>⚠️ Warning:</strong>
+            <ul>
+              {warnings.map((warning, index) => (
+                <li key={index}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+          <button
+            className="warning-dismiss"
+            onClick={() => setWarnings([])}
+            aria-label="Dismiss warnings"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       <div className="view-header">
         <h2>{view?.name || "Graph View"}</h2>
       </div>

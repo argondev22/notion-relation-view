@@ -571,3 +571,142 @@ button:disabled {
     border-bottom-color: #e0e0e0;
   }
 }
+
+/* Warning Banner */
+.warning-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 1.5rem;
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  color: #856404;
+}
+
+.warning-content {
+  flex: 1;
+}
+
+.warning-content strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.warning-content ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  list-style-type: disc;
+}
+
+.warning-content li {
+  margin-bottom: 0.25rem;
+}
+
+.warning-dismiss {
+  background: none;
+  border: none;
+  color: #856404;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  width: auto;
+  margin-left: 1rem;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.warning-dismiss:hover {
+  opacity: 1;
+  background: none;
+}
+
+/* Progress Bar */
+.progress-bar-container {
+  position: relative;
+  width: 100%;
+  max-width: 300px;
+  height: 24px;
+  background-color: #f3f3f3;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 1rem;
+  border: 1px solid #ddd;
+}
+
+.progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #646cff 0%, #535bf2 100%);
+  transition: width 0.3s ease;
+  border-radius: 12px;
+}
+
+.progress-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #333;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+/* View Page */
+.view-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+}
+
+.view-header {
+  padding: 1rem 2rem;
+  background-color: #1a1a1a;
+  border-bottom: 1px solid #333;
+}
+
+.view-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.view-controls {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem 2rem;
+  background-color: #2a2a2a;
+  border-bottom: 1px solid #333;
+}
+
+.view-canvas {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+@media (prefers-color-scheme: light) {
+  .warning-banner {
+    background-color: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+  }
+
+  .progress-bar-container {
+    background-color: #e0e0e0;
+    border-color: #ccc;
+  }
+
+  .view-header {
+    background-color: #f9f9f9;
+    border-bottom-color: #e0e0e0;
+  }
+
+  .view-controls {
+    background-color: #ffffff;
+    border-bottom-color: #e0e0e0;
+  }
+}
