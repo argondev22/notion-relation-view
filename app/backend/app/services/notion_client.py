@@ -2,14 +2,19 @@
 Notion API Client for fetching databases, pages, and relations.
 """
 import logging
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, TypeVar, Callable
 from datetime import datetime
+from functools import wraps
+import asyncio
 import httpx
 from app.config import settings
 
 
 # Configure logging
 logger = logging.getLogger(__name__)
+
+# Type variable for generic return type
+T = TypeVar('T')
 
 
 class NotionAPIError(Exception):
@@ -39,6 +44,148 @@ class PermissionError(NotionAPIError):
     pass
 
 
+def with_retry(
+    max_retries: int = 3,
+    base_delay: float = 1.0,
+    max_delay: float = 60.0,
+    exponential_base: float = 2.0
+):
+    """
+    Decorator for retrying async functions with exponential backoff.
+
+    This decorator handles transient errors (timeouts, network errors) by retrying
+    the decorated function with exponentially increasing delays between attempts.
+    Rate limit errors are handled specially by respecting the Retry-After header.
+    Permanent errors (invalid token, permission denied) are not retried.
+
+    Args:
+        max_retries: Maximum number of retry attempts (default: 3)
+        base_delay: Initial delay in seconds before first retry (default: 1.0)
+        max_delay: Maximum delay between retries in seconds (default: 60.0)
+        exponential_base: Base for exponential backoff calculation (default: 2.0)
+
+    Returns:
+        Decorated async function with retry logic
+
+    Example:
+        @with_retry(max_retries=3, base_delay=1.0)
+        async def fetch_data():
+            # Function that may fail transiently
+            pass
+
+    Retry behavior:
+        - Attempt 0: No delay (initial attempt)
+        - Attempt 1: base_delay * (exponential_base ^ 0) = 1.0s
+        - Attempt 2: base_delay * (exponential_base ^ 1) = 2.0s
+        - Attempt 3: base_delay * (exponential_base ^ 2) = 4.0s
+
+    Error handling:
+        - httpx.TimeoutException: Retried with exponential backoff
+        - httpx.NetworkError: Retried with exponential backoff
+        - RateLimitError: Retried after waiting for retry_after duration
+        - InvalidTokenError: Not retried (permanent error)
+        - PermissionError: Not retried (permanent error)
+        - Other exceptions: Not retried
+    """
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        async def wrapper(*args, **kwargs) -> T:
+            last_exception = None
+            correlation_id = id(wrapper)  # Simple correlation ID for log tracing
+
+            for attempt in range(max_retries + 1):
+                try:
+                    # Log attempt if it's a retry
+                    if attempt > 0:
+                        logger.info(
+                            f"[{correlation_id}] Retry attempt {attempt}/{max_retries} "
+                            f"for {func.__name__}"
+                        )
+
+                    # Execute the function
+                    return await func(*args, **kwargs)
+
+                except (httpx.TimeoutException, httpx.NetworkError) as e:
+                    last_exception = e
+                    error_type = type(e).__name__
+
+                    # Don't retry if we've exhausted all attempts
+                    if attempt == max_retries:
+                        logger.error(
+                            f"[{correlation_id}] All retry attempts exhausted for {func.__name__}. "
+                            f"Final error: {error_type}: {str(e)}"
+                        )
+                        raise
+
+                    # Calculate delay with exponential backoff
+                    delay = min(
+                        base_delay * (exponential_base ** attempt),
+                        max_delay
+                    )
+
+                    logger.warning(
+                        f"[{correlation_id}] Attempt {attempt + 1}/{max_retries + 1} failed "
+                        f"for {func.__name__}: {error_type}: {str(e)}. "
+                        f"Retrying in {delay:.2f}s..."
+                    )
+
+                    await asyncio.sleep(delay)
+
+                except RateLimitError as e:
+                    last_exception = e
+
+                    # Don't retry if we've exhausted all attempts
+                    if attempt == max_retries:
+                        logger.error(
+                            f"[{correlation_id}] All retry attempts exhausted for {func.__name__}. "
+                            f"Rate limit error: {str(e)}"
+                        )
+                        raise
+
+                    # Use retry_after from the error if available, otherwise use exponential backoff
+                    if e.retry_after:
+                        delay = float(e.retry_after)
+                        logger.warning(
+                            f"[{correlation_id}] Rate limited on attempt {attempt + 1}/{max_retries + 1} "
+                            f"for {func.__name__}. Waiting {delay}s as specified by Retry-After header..."
+                        )
+                    else:
+                        delay = min(
+                            base_delay * (exponential_base ** attempt),
+                            max_delay
+                        )
+                        logger.warning(
+                            f"[{correlation_id}] Rate limited on attempt {attempt + 1}/{max_retries + 1} "
+                            f"for {func.__name__}. No Retry-After header, using exponential backoff: {delay:.2f}s..."
+                        )
+
+                    await asyncio.sleep(delay)
+
+                except (InvalidTokenError, PermissionError) as e:
+                    # These are permanent errors - don't retry
+                    logger.error(
+                        f"[{correlation_id}] Permanent error in {func.__name__}: "
+                        f"{type(e).__name__}: {str(e)}. Not retrying."
+                    )
+                    raise
+
+                except Exception as e:
+                    # Unexpected errors - don't retry
+                    logger.error(
+                        f"[{correlation_id}] Unexpected error in {func.__name__}: "
+                        f"{type(e).__name__}: {str(e)}. Not retrying."
+                    )
+                    raise
+
+            # This should never be reached, but just in case
+            if last_exception:
+                raise last_exception
+            raise RuntimeError(f"Retry logic failed unexpectedly for {func.__name__}")
+
+        return wrapper
+    return decorator
+
+
 class NotionAPIClient:
     """Client for interacting with the Notion API."""
 
@@ -46,8 +193,25 @@ class NotionAPIClient:
     NOTION_VERSION = "2022-06-28"
 
     def __init__(self):
-        """Initialize the Notion API client."""
-        self.timeout = httpx.Timeout(30.0, connect=10.0)
+        """
+        Initialize the Notion API client with configurable timeouts.
+
+        Timeouts can be configured via environment variables:
+        - NOTION_TIMEOUT_DATABASE_LIST: Timeout for listing databases (default: 60s)
+        - NOTION_TIMEOUT_DATABASE_QUERY: Timeout for querying database pages (default: 90s)
+        - NOTION_TIMEOUT_PAGE_FETCH: Timeout for fetching individual pages (default: 30s)
+        """
+        # Load timeout configuration from settings
+        self.timeout_database_list = settings.NOTION_TIMEOUT_DATABASE_LIST
+        self.timeout_database_query = settings.NOTION_TIMEOUT_DATABASE_QUERY
+        self.timeout_page_fetch = settings.NOTION_TIMEOUT_PAGE_FETCH
+
+        logger.info(
+            f"NotionAPIClient initialized with timeouts: "
+            f"database_list={self.timeout_database_list}s, "
+            f"database_query={self.timeout_database_query}s, "
+            f"page_fetch={self.timeout_page_fetch}s"
+        )
 
     def _get_headers(self, token: str) -> Dict[str, str]:
         """
@@ -127,7 +291,9 @@ class NotionAPIClient:
             NotionAPIError: For other API errors
         """
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            # Use database list timeout for authentication
+            timeout = httpx.Timeout(self.timeout_database_list, connect=10.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 # Try to fetch the bot user to verify the token
                 response = await client.get(
                     f"{self.BASE_URL}/users/me",
@@ -157,6 +323,7 @@ class NotionAPIClient:
             logger.error(f"Unexpected error while authenticating: {str(e)}")
             raise NotionAPIError(f"Unexpected error: {str(e)}")
 
+    @with_retry(max_retries=3, base_delay=1.0)
     async def get_databases(self, token: str) -> List[Dict[str, Any]]:
         """
         Fetch all accessible databases from Notion.
@@ -175,7 +342,9 @@ class NotionAPIClient:
         databases = []
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            # Use database list timeout for fetching databases
+            timeout = httpx.Timeout(self.timeout_database_list, connect=10.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 has_more = True
                 start_cursor = None
 
@@ -234,6 +403,7 @@ class NotionAPIClient:
             logger.error(f"Unexpected error while fetching databases: {str(e)}")
             raise NotionAPIError(f"Unexpected error: {str(e)}")
 
+    @with_retry(max_retries=3, base_delay=2.0)
     async def get_pages(self, token: str, database_id: str) -> List[Dict[str, Any]]:
         """
         Fetch all pages from a specific database.
@@ -253,7 +423,9 @@ class NotionAPIClient:
         pages = []
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            # Use database query timeout for fetching pages from a database
+            timeout = httpx.Timeout(self.timeout_database_query, connect=10.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 has_more = True
                 start_cursor = None
 
@@ -396,7 +568,9 @@ class NotionAPIClient:
         total_requests = 0
 
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            # Use page fetch timeout for individual page requests
+            timeout = httpx.Timeout(self.timeout_page_fetch, connect=10.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 # Create semaphore to limit concurrent requests
                 semaphore = asyncio.Semaphore(max_concurrent)
 
