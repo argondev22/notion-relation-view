@@ -2,9 +2,8 @@
 Authentication schemas for request/response validation
 """
 
-from pydantic import BaseModel, EmailStr, Field, vaidator
+from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Optional
-import re
 
 
 class GoogleLoginResponse(BaseModel):
@@ -27,10 +26,10 @@ class GoogleCallbackRequest(BaseModel):
 class UserResponse(BaseModel):
     """User information response"""
 
-    id: str = Field(..., description="Unique user identifer", min_length=1)
+    id: str = Field(..., description="Unique user identifier", min_length=1)
     email: EmailStr = Field(..., description="User's email address")
     name: str = Field(
-        ..., description="User's display name", min_length=1, max_lentgh=255
+        ..., description="User's display name", min_length=1, max_length=255
     )
     picture: Optional[str] = Field(
         None, description="URL to user's profile picture", max_length=2048
@@ -45,7 +44,7 @@ class UserResponse(BaseModel):
     @validator("picture")
     def validate_picture_url(cls, v):
         """Validate picture url format"""
-        if v is not None and not v.startwith(("http://", "https://")):
+        if v is not None and not v.startswith(("http://", "https://")):
             raise ValueError("Picture URL must start with http:// or https://")
         return v
 
@@ -79,7 +78,7 @@ class AuthResponse(BaseModel):
 class LogoutResponse(BaseModel):
     """Logout response"""
 
-    uccess: bool = Field(..., description="Whether logout was successful")
+    success: bool = Field(..., description="Whether logout was successful")
     message: str = Field(
         ..., description="Logout status message", min_length=1, max_length=200
     )
