@@ -2,7 +2,7 @@
 Security utilities for JWT and encryption
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import jwt
 from cryptography.fernet import Fernet
