@@ -16,7 +16,7 @@ notion-relation-viewは、Notionのページ間のリレーションを視覚的
 
 5. **Google OIDC認証**: ユーザー認証はGoogle OpenID Connectのみを使用します。アプリケーション独自のパスワード管理を行わず、Googleの認証基盤を活用します。これにより、セキュリティリスクを軽減し、ユーザー体験を向上させます。
 
-6. **データキャッシュ**: バックエンドでNotion APIから取得したデータをキャッシュし、API呼び出しを最小化します。これにより、レート制限を回避し、レスポンス速度を向上させます。
+6. **データキャッシュ**: バックエンドでNotion APIから取得したデータをRedisにキャッシュし、API呼び出しを最小化します。これにより、レート制限を回避し、レスポンス速度を向上させます。Redisの高速なインメモリストレージにより、複数サーバーインスタンス間でのキャッシュ共有と、柔軟なTTL管理が可能になります。
 
 7. **リレーション抽出の柔軟性**: リレーションプロパティベースの抽出とページメンションベースの抽出の両方をサポートします。Strategy パターンを使用して実装を切り替え可能にします。機能アクセス制御はPlan_Enforcerが担当します。
 
@@ -64,7 +64,7 @@ sequenceDiagram
     participant Frontend
     participant Backend
     participant NotionAPI as Notion API
-    participant Cache
+    participant Redis
     participant DB as Database
 
     User->>Frontend: Notion APIトークンを入力
@@ -76,9 +76,9 @@ sequenceDiagram
 
     User->>Frontend: グラフデータを要求
     Frontend->>Backend: グラフデータ取得API呼び出し
-    Backend->>Cache: キャッシュを確認
+    Backend->>Redis: キャッシュを確認
     alt キャッシュが有効
-        Cache->>Backend: キャッシュデータを返す
+        Redis->>Backend: キャッシュデータを返す
     else キャッシュが無効または存在しない
         Backend->>DB: 暗号化トークンを取得
         DB->>Backend: 暗号化トークンを返す
@@ -89,52 +89,11 @@ sequenceDiagram
         NotionAPI->>Backend: ページデータを返す
         Backend->>Backend: リレーションを抽出
         Backend->>Backend: グラフデータを構築
-        Backend->>Cache: グラフデータをキャッシュ
+        Backend->>Redis: グラフデータをキャッシュ（TTL: 15分）
     end
     Backend->>Frontend: グラフデータを返す
     Frontend->>Frontend: グラフを描画
     Frontend->>User: グラフを表示
-```
-
-#### ページメンション抽出フロー
-
-```mermaid
-sequenceDiagram
-    actor User
-    participant Frontend
-    participant Backend
-    participant PlanEnforcer as Plan Enforcer
-    participant NotionAPI as Notion API
-    participant RelationExtractor as Relation Extractor
-
-    User->>Frontend: リレーション抽出モードを「メンション」に変更
-    Frontend->>Backend: 抽出モード変更を要求
-    Backend->>PlanEnforcer: 機能アクセス権を確認
-    PlanEnforcer->>Backend: アクセス権結果を返す
-
-    alt アクセス許可
-        Backend->>Backend: 抽出モードを保存
-        Backend->>Frontend: 変更成功を返す
-        User->>Frontend: グラフデータを要求
-        Frontend->>Backend: グラフデータ取得（メンションモード）
-        Backend->>NotionAPI: 全ページを取得
-        NotionAPI->>Backend: ページリストを返す
-
-        loop 各ページ
-            Backend->>NotionAPI: ページのブロックコンテンツを取得
-            NotionAPI->>Backend: ブロックデータを返す
-            Backend->>RelationExtractor: メンションを抽出
-            RelationExtractor->>Backend: メンションリストを返す
-            Backend->>Frontend: 進行状況を通知
-        end
-
-        Backend->>Backend: リレーションを構築（重複排除）
-        Backend->>Frontend: グラフデータを返す
-        Frontend->>User: グラフを表示
-    else アクセス拒否
-        Backend->>Frontend: アクセス拒否エラーを返す
-        Frontend->>User: 機能制限の通知を表示
-    end
 ```
 
 #### ビュー管理フロー
@@ -181,7 +140,7 @@ sequenceDiagram
 3. **Notion API Clientレイヤー**: Notion APIとの通信、データ変換、エラーハンドリング
 4. **Relation Extractorレイヤー**: リレーション抽出（プロパティベース、メンションベース）
 5. **Plan Enforcerレイヤー**: プラン制限の適用、機能アクセス制御
-6. **Cacheレイヤー**: データキャッシュ、レート制限管理
+6. **Cacheレイヤー**: Redisを使用したデータキャッシュ、レート制限管理
 7. **Databaseレイヤー**: データ永続化、トークン管理
 
 ## コンポーネントとインターフェース
@@ -1146,16 +1105,16 @@ interface GoogleUser {
 
 #### 6. Cache Manager
 
-**責務**: Notion APIから取得したデータをキャッシュし、API呼び出しを最小化
+**責務**: Redisを使用してNotion APIから取得したデータをキャッシュし、API呼び出しを最小化
 
 **主要メソッド**:
 
 ```typescript
 interface CacheManager {
-  // グラフデータをキャッシュに保存
+  // グラフデータをRedisキャッシュに保存
   cacheGraphData(userId: string, data: GraphData, ttl: number): Promise<void>;
 
-  // キャッシュからグラフデータを取得
+  // Redisキャッシュからグラフデータを取得
   getGraphData(userId: string): Promise<GraphData | null>;
 
   // キャッシュを無効化
@@ -1168,9 +1127,25 @@ interface CacheManager {
 
 **キャッシュ戦略**:
 
-- TTL（Time To Live）: 15分
-- ユーザーごとにキャッシュを分離
-- データ更新時にキャッシュを無効化
+- **ストレージ**: Redis（インメモリデータストア）
+- **TTL（Time To Live）**: 15分（900秒）
+- **キー設計**: `graph_data:{userId}` 形式
+- **データ形式**: JSON文字列としてシリアライズ
+- **ユーザー分離**: ユーザーごとにキャッシュを分離
+- **無効化**: データ更新時にキャッシュを無効化
+- **接続管理**: Redis接続プールを使用して効率的な接続管理
+
+**Redis設定**:
+
+```python
+# 推奨設定
+REDIS_HOST = "localhost"  # または環境変数から取得
+REDIS_PORT = 6379
+REDIS_DB = 0
+REDIS_PASSWORD = None  # 本番環境では設定
+REDIS_DECODE_RESPONSES = True
+REDIS_MAX_CONNECTIONS = 10
+```
 
 #### 7. Database Service
 
@@ -1798,9 +1773,9 @@ interface GoogleUser {
 - **フレームワーク**: FastAPI
 - **データベース**: PostgreSQL
 - **ORM**: SQLAlchemy
+- **キャッシュ**: Redis 7.0+
 - **認証**: JWT（JSON Web Token）- PyJWT
 - **暗号化**: cryptography（AES-256-GCM によるトークン暗号化、および PBKDF2-HMAC-SHA256 を用いた鍵導出を使用）
-- **キャッシュ**: Redis（オプション）
 - **テスト**: pytest + hypothesis
 - **ホスティング**: Railway、Render、または AWS
 
@@ -1838,14 +1813,6 @@ CREATE TABLE views (
   extraction_mode VARCHAR(20) DEFAULT 'property' CHECK (extraction_mode IN ('property', 'mention', 'both')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
--- キャッシュテーブル（オプション）
-CREATE TABLE cached_graph_data (
-  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-  data JSONB NOT NULL,
-  cached_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  expires_at TIMESTAMP NOT NULL
 );
 
 -- インデックス
@@ -1893,6 +1860,37 @@ CREATE INDEX idx_views_user_id ON views(user_id);
 - フロントエンド: `npm run dev`
 - バックエンド: `uvicorn main:app --reload`
 - データベース: Docker Compose で PostgreSQL を起動
+- Redis: Docker Compose で Redis を起動
+
+**Docker Compose設定例**:
+
+```yaml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: notion_relation_view
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+  redis_data:
+```
 
 ### 本番環境
 
@@ -1904,10 +1902,10 @@ CREATE INDEX idx_views_user_id ON views(user_id);
 ### 環境変数
 
 - `DATABASE_URL`: データベース接続URL
+- `REDIS_URL`: Redis接続URL（必須）
 - `JWT_SECRET`: JWT署名用シークレット
 - `ENCRYPTION_KEY`: トークン暗号化用キー
 - `FRONTEND_URL`: フロントエンドURL（CORS設定用）
 - `GOOGLE_CLIENT_ID`: Google OIDCクライアントID
 - `GOOGLE_CLIENT_SECRET`: Google OIDCクライアントシークレット
 - `GOOGLE_REDIRECT_URI`: Google OIDC認証後のリダイレクトURI
-- `REDIS_URL`: Redisキャッシュ接続URL（オプション）
