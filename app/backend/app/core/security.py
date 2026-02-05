@@ -23,15 +23,17 @@ def create_access_token(user_id: str, expires_delta: Optional[timedelta] = None)
     Returns:
         Encoded JWT token string
     """
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(hours=settings.JWT_EXPIRATION_HOURS)
+    now = datetime.now(timezone.utc)
 
-    payload = {"sub": user_id, "exp": expire, "iat": datetime.utcnow()}
+    if expires_delta:
+        expire = now + expires_delta
+    else:
+        expire = now + timedelta(hours=settings.JWT_EXPIRATION_HOURS)
+
+    payload = {"sub": user_id, "exp": expire, "iat": now, "type": "access"}
 
     encoded_jwt = jwt.encode(
-        payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+        payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM
     )
 
     return encoded_jwt
