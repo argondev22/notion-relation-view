@@ -46,7 +46,7 @@ services:
     env_file:
       - .env
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/notion_relation_view}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/app}
       - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
       - JWT_SECRET=${JWT_SECRET:-your-jwt-secret-change-in-production}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-your-encryption-key-change-in-production}
