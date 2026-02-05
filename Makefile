@@ -146,3 +146,10 @@ shell-frontend:
 # Database shell
 db-shell:
 	@cd app && docker compose exec postgres psql -U postgres -d notion_relation_view
+
+# Code formatting
+format-backend:
+	@cd app && docker compose exec backend black app/
+
+format-backend-check:
+	@cd app && docker compose exec backend black --check app/
