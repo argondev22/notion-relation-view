@@ -11,10 +11,18 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 - **System**: notion-relation-viewアプリケーション全体
 - **Graph_Visualizer**: グラフの描画とレンダリングを担当するコンポーネント
 - **Notion_API_Client**: Notion APIとの通信を処理するコンポーネント
+- **Plan_Enforcer**: プラン制限を適用し、機能アクセスを制御するコンポーネント
+- **Theme_Manager**: アプリケーションのテーマ（ライト/ダーク）を管理するコンポーネント
 - **Node**: グラフ上のNotionページを表す視覚要素
 - **Edge**: ノード間のリレーションを表す接続線
 - **Relation**: Notionデータベース内のページ間の関連付け
+- **Relation_Property**: データベースのプロパティとして定義されたページ間のリレーション
+- **Page_Mention**: ページコンテンツ内の@メンションによるページ参照
+- **Relation_Extraction_Mode**: リレーションの抽出方法（プロパティのみ、メンションのみ、両方）
+- **Theme_Mode**: アプリケーションの表示テーマ（ライト、ダーク、システム依存）
 - **User**: アプリケーションを使用する人
+- **Free_Plan**: 無料プラン（基本機能のみ）
+- **Pro_Plan**: 有料プラン（高度な機能を含む）
 - **Canvas**: グラフが描画される表示領域
 
 ## 要件
@@ -117,3 +125,38 @@ notion-relation-viewは、Notionのリレーション機能を視覚化するツ
 2. WHEN ユーザーがズームまたはパンする THEN THE System SHALL 200ミリ秒以内に応答する
 3. WHEN 大量のデータを処理する THEN THE System SHALL 仮想化またはレベル・オブ・ディテール技術を使用してパフォーマンスを最適化する
 4. WHEN データ取得が実行される THEN THE Notion_API_Client SHALL リクエストをバッチ処理してAPI呼び出しを最小化する
+
+### 要件9: ページメンションベースのリレーション抽出（Pro限定機能）
+
+**ユーザーストーリー:** Pro_Planユーザーとして、データベースのリレーションプロパティだけでなく、ページ内のメンション（@リンク）もグラフに表示したい。そうすることで、より包括的なページ間の関係を可視化できる。
+
+#### 受け入れ基準
+
+1. WHEN Pro_Planユーザーがビュー設定を作成または編集する THEN THE System SHALL リレーション抽出モードの選択オプション（「プロパティのみ」「メンションのみ」「両方」）を表示する
+2. WHEN Free_Planユーザーがリレーション抽出モード設定にアクセスしようとする THEN THE Plan_Enforcer SHALL アクセスを拒否し、Pro_Plan限定機能であることを通知する
+3. WHEN ユーザーが「メンションのみ」または「両方」を選択する THEN THE Notion_API_Client SHALL 各ページのブロックコンテンツを取得し、Rich Textオブジェクト内のページメンションを抽出する
+4. WHEN ページメンションが見つかる THEN THE Notion_API_Client SHALL メンション先のページIDを抽出し、エッジとして記録する
+5. WHEN ユーザーが「両方」を選択する THEN THE System SHALL リレーションプロパティとページメンションの両方からエッジを生成し、重複を排除する
+6. WHEN メンション抽出が進行中である THEN THE System SHALL 進行状況（処理済みページ数/総ページ数）を表示する
+7. WHEN メンション抽出が完了する THEN THE System SHALL 抽出されたメンション数とリレーション数を個別に表示する
+8. THE System SHALL メンション抽出のパフォーマンス影響をユーザーに警告する（API呼び出し増加、処理時間増加）
+9. WHEN ユーザーがリレーション抽出モードを切り替える THEN THE System SHALL ビュー設定に選択されたモードを保存し、次回ロード時に適用する
+10. WHEN Pro_PlanユーザーがFree_Planにダウングレードする THEN THE System SHALL リレーション抽出モードを「プロパティのみ」に自動的にリセットする
+
+### 要件10: テーマ設定
+
+**ユーザーストーリー:** ユーザーとして、アプリケーションの表示テーマを選択したい。そうすることで、自分の好みや環境に合わせた視覚体験を得られる。
+
+#### 受け入れ基準
+
+1. WHEN ユーザーが設定メニューを開く THEN THE System SHALL テーマ設定オプション（「ライトモード」「ダークモード」「システム依存」）を表示する
+2. WHEN ユーザーが「ライトモード」を選択する THEN THE Theme_Manager SHALL アプリケーション全体にライトテーマを適用する
+3. WHEN ユーザーが「ダークモード」を選択する THEN THE Theme_Manager SHALL アプリケーション全体にダークテーマを適用する
+4. WHEN ユーザーが「システム依存」を選択する THEN THE Theme_Manager SHALL OSまたはブラウザのテーマ設定を検出し、対応するテーマを適用する
+5. WHEN システムテーマが変更される AND ユーザーが「システム依存」を選択している THEN THE Theme_Manager SHALL 自動的にテーマを切り替える
+6. WHEN テーマが変更される THEN THE System SHALL グラフの色、UI要素、テキストの色を新しいテーマに合わせて更新する
+7. WHEN ユーザーがテーマを選択する THEN THE System SHALL 選択をローカルストレージに保存し、次回訪問時に適用する
+8. WHEN アプリケーションが初回起動される THEN THE System SHALL デフォルトで「システム依存」を設定する
+9. THE Theme_Manager SHALL ライトモードとダークモードの両方で十分なコントラストを確保し、アクセシビリティ基準（WCAG 2.1 AA）を満たす
+10. WHEN テーマが切り替わる THEN THE System SHALL スムーズなトランジション効果を適用する
+11. THE System SHALL Free_PlanとPro_Planの両方のユーザーにテーマ設定機能を提供する
