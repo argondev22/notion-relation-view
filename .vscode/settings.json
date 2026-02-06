@@ -23,9 +23,27 @@
   "[yml]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    }
+  },
+  "python.linting.enabled": true,
+  "python.linting.flake8Enabled": true,
+  "python.linting.mypyEnabled": true,
+  "python.linting.ruffEnabled": true,
+  "python.formatting.provider": "black",
+  "python.analysis.typeCheckingMode": "basic",
+  "python.analysis.autoImportCompletions": true,
+  "ruff.lint.args": ["--config=app/backend/pyproject.toml"],
+  "black-formatter.args": ["--config", "app/backend/pyproject.toml"],
+  "isort.args": ["--settings-path", "app/backend/pyproject.toml"],
   "json.validate.enable": true,
   "json.format.enable": true,
   "json.schemaDownload.enable": true,
   "kiroAgent.configureMCP": "Enabled",
   "typescript.autoClosingTags": false
 }
+
