@@ -1,11 +1,33 @@
 {
   "recommendations": [
+    // Icons & UI
     "pkief.material-icon-theme",
+
+    // AI Assistants
     "github.copilot",
     "GitHub.copilot-chat",
-    "github.codespaces",
+
+    // Docker & Containers
     "ms-azuretools.vscode-docker",
-    "ms-azuretools.vscode-containers",
-    "ms-vscode-remote.remote-containers"
+    "ms-vscode-remote.remote-containers",
+
+    // Python Development
+    "ms-python.python",
+    "charliermarsh.ruff",
+    "ms-python.mypy-type-checker",
+
+    // Frontend Development
+    "esbenp.prettier-vscode",
+    "dbaeumer.vscode-eslint",
+
+    // Markdown
+    "DavidAnson.vscode-markdownlint"
+  ],
+  "unwantedRecommendations": [
+    // Replaced by Ruff
+    "ms-python.black-formatter",
+    "ms-python.isort",
+    "ms-python.flake8"
   ]
 }
+

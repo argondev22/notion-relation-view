@@ -1,13 +1,18 @@
 {
+  // General editor settings
   "editor.formatOnSave": true,
   "editor.insertSpaces": true,
   "editor.tabSize": 4,
-  "files.eol": "\n",
-  "files.insertFinalNewline": true,
-  "files.trimTrailingWhitespace": true,
   "editor.detectIndentation": false,
   "editor.wordWrap": "off",
   "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // File settings
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // Language-specific formatters
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
@@ -23,27 +28,23 @@
   "[yml]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+
+  // Python settings (Ruff + mypy)
   "[python]": {
-    "editor.defaultFormatter": "ms-python.black-formatter",
+    "editor.defaultFormatter": "charliermarsh.ruff",
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
-      "source.organizeImports": "explicit"
+      "source.organizeImports": "explicit",
+      "source.fixAll": "explicit"
     }
   },
-  "python.linting.enabled": true,
-  "python.linting.flake8Enabled": true,
-  "python.linting.mypyEnabled": true,
-  "python.linting.ruffEnabled": true,
-  "python.formatting.provider": "black",
-  "python.analysis.typeCheckingMode": "basic",
-  "python.analysis.autoImportCompletions": true,
-  "ruff.lint.args": ["--config=app/backend/pyproject.toml"],
-  "black-formatter.args": ["--config", "app/backend/pyproject.toml"],
-  "isort.args": ["--settings-path", "app/backend/pyproject.toml"],
+
+  // JSON settings
   "json.validate.enable": true,
   "json.format.enable": true,
   "json.schemaDownload.enable": true,
+
+  // Other settings
   "kiroAgent.configureMCP": "Enabled",
   "typescript.autoClosingTags": false
 }
-
