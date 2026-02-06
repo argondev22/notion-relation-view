@@ -1,0 +1,43 @@
+---
+name: Python Code Quality (Fast)
+
+# This is a faster version using only Ruff for quick feedback
+# Use this for rapid iteration during development
+
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - "app/backend/**/*.py"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "app/backend/**/*.py"
+
+jobs:
+  ruff:
+    name: Fast lint with Ruff
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ruff
+        run: pip install ruff
+
+      - name: Run Ruff check
+        run: |
+          cd app/backend
+          ruff check app/
+
+      - name: Run Ruff format check
+        run: |
+          cd app/backend
+          ruff format --check app/

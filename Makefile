@@ -190,21 +190,3 @@ format-all: format-backend
 # Quick quality check (format + lint + type check)
 quality-check: format-backend lint-backend type-check
 	@echo "✅ Quality check complete!"
-
-# Pre-commit hooks
-pre-commit-install:
-	@echo "📦 Installing pre-commit hooks..."
-	@cd app && docker compose exec backend bash -c "cd /app/backend && pip install pre-commit && pre-commit install"
-	@echo "✅ Pre-commit hooks installed!"
-	@echo ""
-	@echo "Now git commits will automatically run linting checks."
-	@echo "To run manually: make pre-commit-run"
-
-pre-commit-run:
-	@echo "🔍 Running pre-commit checks..."
-	@cd app && docker compose exec backend bash -c "cd /app/backend && pre-commit run --all-files"
-
-pre-commit-uninstall:
-	@echo "🗑️  Uninstalling pre-commit hooks..."
-	@cd app && docker compose exec backend bash -c "cd /app/backend && pre-commit uninstall"
-	@echo "✅ Pre-commit hooks uninstalled"
