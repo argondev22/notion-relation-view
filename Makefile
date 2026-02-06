@@ -153,3 +153,40 @@ format-backend:
 
 format-backend-check:
 	@cd app && docker compose exec backend black --check app/
+
+# Linting and formatting commands
+lint-backend:
+	@echo "🔍 Running Python linters..."
+	@cd app && docker compose exec backend ruff check app/
+	@cd app && docker compose exec backend flake8 app/
+	@cd app && docker compose exec backend mypy app/
+
+lint-backend-fix:
+	@echo "🔧 Auto-fixing Python linting issues..."
+	@cd app && docker compose exec backend ruff check --fix app/
+	@cd app && docker compose exec backend black app/
+	@cd app && docker compose exec backend isort app/
+
+format-backend:
+	@echo "✨ Formatting Python code..."
+	@cd app && docker compose exec backend black app/
+	@cd app && docker compose exec backend isort app/
+
+format-backend-check:
+	@echo "🔍 Checking Python code formatting..."
+	@cd app && docker compose exec backend black --check app/
+	@cd app && docker compose exec backend isort --check-only app/
+
+type-check:
+	@echo "🔍 Running type checker..."
+	@cd app && docker compose exec backend mypy app/
+
+lint-all: lint-backend
+	@echo "✅ All linting complete!"
+
+format-all: format-backend
+	@echo "✅ All formatting complete!"
+
+# Quick quality check (format + lint + type check)
+quality-check: format-backend lint-backend type-check
+	@echo "✅ Quality check complete!"
