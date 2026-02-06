@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class TokenResponse(TypedDict):
-    """Google OAuth token response structure"""
+    """Google OIDC token response structure"""
 
     id_token: str
     access_token: str
@@ -64,7 +64,7 @@ class AuthService:
         Fetch and cache Google's OIDC discovery document
 
         Returns:
-            Discovery document containing OAuth endpoints
+            Discovery document containing OIDC endpoints
 
         Raises:
             HTTPException: If discovery document cannot be fetched
@@ -174,7 +174,7 @@ class AuthService:
 
         Note:
             Store this state in the user's session and verify it matches
-            when handling the OAuth callback.
+            when handling the OIDC callback.
         """
         return secrets.token_urlsafe(32)
 
@@ -183,7 +183,7 @@ class AuthService:
         Generate PKCE code verifier
 
         PKCE (Proof Key for Code Exchange) adds an additional layer of
-        security to the OAuth flow by preventing authorization code
+        security to the OIDC flow by preventing authorization code
         interception attacks.
 
         Returns:
@@ -230,14 +230,14 @@ class AuthService:
 
     async def get_google_login_url(self, state: str, code_challenge: str) -> str:
         """
-        Generate Google OAuth login URL with PKCE
+        Generate Google OIDC login URL with PKCE
 
         Args:
             state: CSRF protection state parameter
             code_challenge: PKCE code challenge
 
         Returns:
-            Google OAuth authorization URL
+            Google OIDC authorization URL
 
         Raises:
             HTTPException: If unable to fetch authorization endpoint
@@ -265,11 +265,11 @@ class AuthService:
         """
         Exchange authorization code for ID token
 
-        This method completes the OAuth flow by exchanging the authorization
+        This method completes the OIDC flow by exchanging the authorization
         code received from Google for an ID token and access token.
 
         Args:
-            code: Authorization code from Google OAuth callback
+            code: Authorization code from Google OIDC callback
             code_verifier: PKCE code verifier generated earlier
 
         Returns:
@@ -278,7 +278,7 @@ class AuthService:
                 - access_token: Token for accessing Google APIs
                 - expires_in: Token lifetime in seconds
                 - token_type: Usually "Bearer"
-                - scope: Granted OAuth scopes
+                - scope: Granted OIDC scopes
                 - refresh_token: Optional token for obtaining new access tokens
 
         Raises:
