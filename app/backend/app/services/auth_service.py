@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class TokenResponse(TypedDict):
-    """Google OIDC token response structure"""
+    """Google ID token response structure"""
 
     id_token: str
     access_token: str
