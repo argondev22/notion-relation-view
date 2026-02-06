@@ -9,7 +9,6 @@ import logging
 import httpx
 from typing import Dict, Optional, Any, TypedDict
 from urllib.parse import urlencode
-from functools import lru_cache
 from jose import jwt, JWTError
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
@@ -59,7 +58,6 @@ class AuthService:
         self.redirect_uri = settings.GOOGLE_REDIRECT_URI
         self._discovery_cache: Optional[Dict[str, Any]] = None
 
-    @lru_cache(maxsize=1)
     async def _get_discovery_document(self) -> Dict[str, Any]:
         """
         Fetch and cache Google's OIDC discovery document
@@ -79,6 +77,16 @@ class AuthService:
                 response.raise_for_status()
                 self._discovery_cache = response.json()
                 return self._discovery_cache
+            except httpx.HTTPStatusError as e:
+                logger.error(
+                    f"Failed to fetch discovery document: "
+                    f"{e.response.status_code if e.response else 'unknown'} - "
+                    f"{e.response.text if e.response else str(e)}"
+                )
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Authentication service temporarily unavailable.",
+                )
             except httpx.RequestError as e:
                 logger.error(f"Failed to fetch discovery document: {str(e)}")
                 raise HTTPException(
@@ -87,19 +95,64 @@ class AuthService:
                 )
 
     async def get_authorization_endpoint(self) -> str:
-        """Get authorization endpoint from discovery document"""
+        """
+        Get authorization endpoint from discovery document
+
+        Returns:
+            Authorization endpoint URL
+
+        Raises:
+            HTTPException: If endpoint not found in discovery document
+        """
         discovery = await self._get_discovery_document()
-        return discovery.get("authorization_endpoint")
+        endpoint = discovery.get("authorization_endpoint")
+        if not endpoint:
+            logger.error("Authorization endpoint not found in discovery document")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service configuration error.",
+            )
+        return endpoint
 
     async def get_token_endpoint(self) -> str:
-        """Get token endpoint from discovery document"""
+        """
+        Get token endpoint from discovery document
+
+        Returns:
+            Token endpoint URL
+
+        Raises:
+            HTTPException: If endpoint not found in discovery document
+        """
         discovery = await self._get_discovery_document()
-        return discovery.get("token_endpoint")
+        endpoint = discovery.get("token_endpoint")
+        if not endpoint:
+            logger.error("Token endpoint not found in discovery document")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service configuration error.",
+            )
+        return endpoint
 
     async def get_jwks_uri(self) -> str:
-        """Get JWKS URI from discovery document"""
+        """
+        Get JWKS URI from discovery document
+
+        Returns:
+            JWKS URI URL
+
+        Raises:
+            HTTPException: If URI not found in discovery document
+        """
         discovery = await self._get_discovery_document()
-        return discovery.get("jwks_uri")
+        uri = discovery.get("jwks_uri")
+        if not uri:
+            logger.error("JWKS URI not found in discovery document")
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Authentication service configuration error.",
+            )
+        return uri
 
     def generate_state(self) -> str:
         """
@@ -260,10 +313,9 @@ class AuthService:
                 return response.json()
             except httpx.HTTPStatusError as e:
                 # Log detailed error for debugging
-                logger.error(
-                    f"Token exchange failed: {e.response.status_code} - "
-                    f"{e.response.text}"
-                )
+                status_code = e.response.status_code if e.response else "unknown"
+                response_text = e.response.text if e.response else str(e)
+                logger.error(f"Token exchange failed: {status_code} - {response_text}")
                 # Return generic error to user
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
