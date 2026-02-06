@@ -51,6 +51,7 @@ class AuthService:
     GOOGLE_DISCOVERY_URL = (
         "https://accounts.google.com/.well-known/openid-configuration"
     )
+    HTTP_TIMEOUT = 10.0  # seconds
 
     def __init__(self):
         self.client_id = settings.GOOGLE_CLIENT_ID
@@ -71,7 +72,7 @@ class AuthService:
         if self._discovery_cache:
             return self._discovery_cache
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             try:
                 response = await client.get(self.GOOGLE_DISCOVERY_URL)
                 response.raise_for_status()
@@ -306,7 +307,7 @@ class AuthService:
             "code_verifier": code_verifier,
         }
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             try:
                 response = await client.post(token_endpoint, data=data)
                 response.raise_for_status()
@@ -368,7 +369,7 @@ class AuthService:
 
             # Fetch Google's public keys
             jwks_uri = await self.get_jwks_uri()
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
                 jwks_response = await client.get(jwks_uri)
                 jwks_response.raise_for_status()
                 jwks = jwks_response.json()
