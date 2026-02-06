@@ -33,7 +33,7 @@
     - **検証対象: 要件 6.8, 6.11**
 
 - [ ] 3. Google OIDC認証の実装
-  - [ ] 3.1 Auth Providerコンポーネントを実装
+  - [x] 3.1 Auth Providerコンポーネントを実装
     - Google OIDCログインURL生成
     - 認証コールバック処理
     - IDトークン検証
