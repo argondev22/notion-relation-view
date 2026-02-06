@@ -2,17 +2,18 @@
 Authentication service for Google OIDC
 """
 
-import secrets
-import hashlib
 import base64
+import hashlib
 import logging
-import httpx
-from typing import Dict, Optional, Any, TypedDict
+import secrets
+from typing import Any, TypedDict
 from urllib.parse import urlencode
-from jose import jwt, JWTError
+
+import httpx
 from fastapi import HTTPException, status
+from jose import JWTError, jwt
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 
 from app.core.config import settings
 from app.models.user import User
@@ -28,7 +29,7 @@ class TokenResponse(TypedDict):
     expires_in: int
     token_type: str
     scope: str
-    refresh_token: Optional[str]
+    refresh_token: str | None
 
 
 class IDTokenPayload(TypedDict):
@@ -42,24 +43,22 @@ class IDTokenPayload(TypedDict):
     email: str
     email_verified: bool
     name: str
-    picture: Optional[str]
+    picture: str | None
 
 
 class AuthService:
     """Service for handling Google OIDC authentication"""
 
-    GOOGLE_DISCOVERY_URL = (
-        "https://accounts.google.com/.well-known/openid-configuration"
-    )
+    GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
     HTTP_TIMEOUT = 10.0  # seconds
 
     def __init__(self):
         self.client_id = settings.GOOGLE_CLIENT_ID
         self.client_secret = settings.GOOGLE_CLIENT_SECRET
         self.redirect_uri = settings.GOOGLE_REDIRECT_URI
-        self._discovery_cache: Optional[Dict[str, Any]] = None
+        self._discovery_cache: dict[str, Any] | None = None
 
-    async def _get_discovery_document(self) -> Dict[str, Any]:
+    async def _get_discovery_document(self) -> dict[str, Any]:
         """
         Fetch and cache Google's OIDC discovery document
 
@@ -72,7 +71,7 @@ class AuthService:
         if self._discovery_cache:
             return self._discovery_cache
 
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=self.HTTP_TIMEOUT) as client:
             try:
                 response = await client.get(self.GOOGLE_DISCOVERY_URL)
                 response.raise_for_status()
@@ -259,9 +258,7 @@ class AuthService:
         query_string = urlencode(params)
         return f"{auth_endpoint}?{query_string}"
 
-    async def exchange_code_for_token(
-        self, code: str, code_verifier: str
-    ) -> TokenResponse:
+    async def exchange_code_for_token(self, code: str, code_verifier: str) -> TokenResponse:
         """
         Exchange authorization code for ID token
 
@@ -307,7 +304,7 @@ class AuthService:
             "code_verifier": code_verifier,
         }
 
-        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+        async with httpx.AsyncClient(timeout=self.HTTP_TIMEOUT) as client:
             try:
                 response = await client.post(token_endpoint, data=data)
                 response.raise_for_status()
@@ -369,7 +366,7 @@ class AuthService:
 
             # Fetch Google's public keys
             jwks_uri = await self.get_jwks_uri()
-            async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
+            async with httpx.AsyncClient(timeout=self.HTTP_TIMEOUT) as client:
                 jwks_response = await client.get(jwks_uri)
                 jwks_response.raise_for_status()
                 jwks = jwks_response.json()
@@ -414,7 +411,7 @@ class AuthService:
             )
 
     def get_or_create_user(
-        self, db: Session, email: str, name: str, picture: Optional[str] = None
+        self, db: Session, email: str, name: str, picture: str | None = None
     ) -> User:
         """
         Get existing user or create new user from Google info
