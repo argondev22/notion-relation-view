@@ -7,6 +7,7 @@ All code, comments, commit messages, and technical documentation must be written
 ## Scope
 
 ### Must Be in English
+
 - Source code (variables, functions, classes, methods)
 - Code comments and docstrings
 - Commit messages
@@ -18,6 +19,7 @@ All code, comments, commit messages, and technical documentation must be written
 - Configuration files with comments
 
 ### Can Be in Other Languages
+
 - User-facing content (UI text, error messages shown to end users)
 - Product documentation for specific markets
 - Internal team communication (Slack, meetings, etc.)
@@ -33,6 +35,7 @@ All code, comments, commit messages, and technical documentation must be written
 ## Examples
 
 ✅ **Correct**:
+
 ```python
 def calculate_user_subscription_fee(user_id: str) -> float:
     """Calculate the monthly subscription fee for a user."""
@@ -41,13 +44,14 @@ def calculate_user_subscription_fee(user_id: str) -> float:
     return tier.monthly_price
 ```
 
-```
+```text
 feat(subscription): add monthly fee calculation
 
 Implement function to calculate user subscription fees based on tier.
 ```
 
 ❌ **Incorrect**:
+
 ```python
 def ユーザー料金計算(user_id: str) -> float:
     """ユーザーの月額料金を計算する"""
@@ -56,7 +60,7 @@ def ユーザー料金計算(user_id: str) -> float:
     return tier.monthly_price
 ```
 
-```
+```text
 feat(subscription): 月額料金計算機能を追加
 
 ティアに基づいてユーザーのサブスクリプション料金を計算する機能を実装。
@@ -65,6 +69,7 @@ feat(subscription): 月額料金計算機能を追加
 ## AI Assistant Behavior
 
 When generating code or commit messages, the AI assistant must:
+
 - Always use English for code identifiers
 - Always use English for comments and docstrings
 - Always use English for commit messages

@@ -7,6 +7,7 @@
 ## AI Assistant's Role
 
 ### What AI Should Do
+
 - コードの提案や推奨事項を提供する
 - ベストプラクティスやアーキテクチャパターンを説明する
 - 問題の診断と解決策の提案を行う
@@ -15,6 +16,7 @@
 - 設計やアプローチについてのガイダンスを提供する
 
 ### What AI Should NOT Do
+
 - ファイルの作成や変更を自動的に実行しない
 - コマンドを直接実行しない
 - ユーザーの確認なしにコードを書き換えない
@@ -30,13 +32,15 @@
 ## Example Workflow
 
 ❌ **Incorrect (AI doing the work)**:
-```
+
+```text
 I'll create the file for you...
 [AI creates file automatically]
 ```
 
 ✅ **Correct (AI advising)**:
-```
+
+```text
 You should create a new file at `app/server/models/user.py` with the following content:
 
 [code example]

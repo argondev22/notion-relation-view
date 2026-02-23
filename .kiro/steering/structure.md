@@ -2,7 +2,7 @@
 
 ## Root Directory Layout
 
-```
+```text
 .
 ├── .devcontainer/          # Dev container configuration for VSCode
 ├── .github/                # GitHub workflows and templates
@@ -25,27 +25,35 @@
 ## Key Directories
 
 ### `.devcontainer/`
+
 Development container definitions for consistent environments across team members.
 
 ### `.github/`
+
 GitHub-specific configurations including CI/CD workflows, issue templates, and PR templates.
 
 ### `.kiro/`
+
 AI assistant configuration:
+
 - `specs/`: Feature specifications following spec-driven development
 - `steering/`: Guidance documents for AI assistant behavior
 - `settings/`: Tool and assistant settings
 
 ### `app/`
+
 Main application code organized by service:
+
 - `client/`: Frontend React application
 - `server/`: Backend FastAPI application
 - Each service has its own README with detailed documentation
 
 ### `bin/`
+
 Executable scripts for project automation and utilities.
 
 ### `infra/`
+
 Infrastructure as code and deployment configurations.
 
 ## Code Organization Principles
@@ -75,7 +83,7 @@ Infrastructure as code and deployment configurations.
 
 Follow Conventional Commits specification:
 
-```
+```text
 <type>(<scope>): <subject>
 
 <body>
@@ -86,6 +94,7 @@ Follow Conventional Commits specification:
 **Allowed types**: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert, deps, docker
 
 **Rules**:
+
 - Type must be lowercase
 - Subject cannot be empty or end with period
 - Header max 100 characters

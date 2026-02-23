@@ -9,15 +9,18 @@
 ## Tech Stack
 
 ### Frontend
+
 - React (client application)
 - Port: 3000
 
 ### Backend
+
 - FastAPI (Python web framework)
 - Alembic (database migrations)
 - Port: 8000
 
 ### Database
+
 - PostgreSQL
 
 ## Development Tools
@@ -30,6 +33,7 @@
 ## Common Commands
 
 ### Project Initialization
+
 ```bash
 make init              # Initialize project (first time setup)
                        # - Creates .env file
@@ -40,6 +44,7 @@ make init              # Initialize project (first time setup)
 ```
 
 ### Docker Operations
+
 ```bash
 make build             # Build Docker images
 make up                # Start all services
@@ -52,12 +57,14 @@ make health            # Check service health
 ```
 
 ### Development
+
 ```bash
 make dev               # Start development environment
 make setup             # Build, start, and run migrations
 ```
 
 ### Database
+
 ```bash
 make db-migrate msg="description"  # Create new migration
 make db-upgrade                    # Apply migrations
@@ -66,6 +73,7 @@ make db-shell                      # Access PostgreSQL shell
 ```
 
 ### Testing
+
 ```bash
 make test              # Run all tests
 make test-frontend     # Run frontend tests only
@@ -73,12 +81,14 @@ make test-backend      # Run backend tests only
 ```
 
 ### Shell Access
+
 ```bash
 make shell-backend     # Backend container shell
 make shell-frontend    # Frontend container shell
 ```
 
 ### Code Quality
+
 ```bash
 npm run format         # Format all code with Prettier
 npm run format:check   # Check formatting without changes
@@ -115,6 +125,7 @@ npm run lint:markdown  # Lint markdown files
 #### ✅ Correct Approach
 
 **バックエンド開発・テスト**:
+
 ```bash
 # コンテナ内でシェルを開く
 make shell-backend
@@ -126,6 +137,7 @@ alembic revision --autogenerate -m "description"
 ```
 
 **フロントエンド開発・テスト**:
+
 ```bash
 # コンテナ内でシェルを開く
 make shell-frontend
@@ -137,6 +149,7 @@ npm run lint
 ```
 
 **ワンライナーでの実行**:
+
 ```bash
 # バックエンドテスト
 docker compose -f app/docker-compose.yml exec backend pytest tests/
@@ -183,6 +196,7 @@ AIアシスタントがコマンド実行を提案する際は:
 ### Example Workflows
 
 **新しいマイグレーションの作成**:
+
 ```bash
 # 1. バックエンドコンテナに入る
 make shell-backend
@@ -195,6 +209,7 @@ alembic upgrade head
 ```
 
 **テストの実行とデバッグ**:
+
 ```bash
 # 1. テストを実行（Makefileコマンド）
 make test-backend
@@ -205,6 +220,7 @@ pytest tests/test_specific.py -v
 ```
 
 **フロントエンドの開発**:
+
 ```bash
 # 1. 開発サーバーは自動起動（docker-compose）
 make up
