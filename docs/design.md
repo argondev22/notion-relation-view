@@ -23,19 +23,32 @@
 | SQLAlchemy | ORM | Pythonの標準的なORM、柔軟なクエリ構築 |
 | Alembic | DBマイグレーション | SQLAlchemyとの統合、バージョン管理されたマイグレーション |
 | Pydantic | データバリデーション | FastAPIとの統合、型安全なリクエスト/レスポンス定義 |
-| Redis | キャッシュ | Notion APIレスポンスのキャッシュ、レート制限対策 |
 
-### インフラ
+### インフラ（開発環境）
 
 | 技術 | 用途 | 選定理由 |
 |------|------|---------|
 | Docker Compose | コンテナ管理 | 開発環境の統一、サービス間の依存管理 |
 | PostgreSQL 16 | データベース | 信頼性、JSON型サポート、拡張性 |
-| Redis 7 | キャッシュ | 高速なインメモリストア |
 
-本番環境のデプロイ先は未定。MVPではローカル開発環境を優先する。
+### インフラ（本番環境: AWS）
+
+| サービス | 用途 | 選定理由 |
+|----------|------|---------|
+| Lambda + API Gateway | コンピュート | FastAPI + Mangumアダプタで動作。コスト最小（リクエスト課金） |
+| Cognito | 認証 | Google OIDCをフェデレーテッドIDプロバイダーとして設定。月50,000 MAU無料枠 |
+| RDS PostgreSQL (db.t4g.micro) | データベース | 無料枠対象。Single-AZ構成 |
+| S3 + CloudFront | フロントエンド配信 | Viteビルド成果物の静的ホスティング |
+| ECR | コンテナレジストリ | Lambdaデプロイ用Dockerイメージの管理 |
+| Secrets Manager / SSM Parameter Store | シークレット管理 | ENCRYPTION_KEY、Notion関連の機密情報を安全に保管 |
+| Terraform | IaC | インフラのコード管理、再現性の確保 |
+
+- キャッシュ（ElastiCache等）はMVPでは導入せず、必要に応じて後から追加する
+- 月額コスト見込み: 約$17〜22（約100ユーザー規模）
 
 ## 2. システム構成
+
+### 開発環境
 
 ```text
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -45,32 +58,65 @@
 │              │     │  :3000       │     │  :8000       │
 └──────────────┘     └──────────────┘     └──────┬───────┘
                                                  │
-                                    ┌────────────┼────────────┐
-                                    │            │            │
-                              ┌─────▼─────┐ ┌───▼────┐ ┌────▼─────┐
-                              │ PostgreSQL │ │ Redis  │ │ Notion   │
-                              │ :5432      │ │ :6379  │ │ API      │
-                              └───────────┘ └────────┘ └──────────┘
+                                          ┌──────┴───────┐
+                                          │              │
+                                    ┌─────▼─────┐ ┌─────▼──────┐
+                                    │ PostgreSQL │ │ Notion API │
+                                    │ :5432      │ └────────────┘
+                                    └───────────┘
 ```
 
+### 本番環境（AWS）
+
+```text
+┌──────────┐    ┌────────────┐    ┌─────────────┐    ┌─────────────────┐
+│          │    │            │    │             │    │                 │
+│ ブラウザ  │───→│ CloudFront │───→│ API Gateway │───→│ Lambda(FastAPI) │
+│          │    │  + S3      │    │             │    │  + Mangum       │
+└──────────┘    └────────────┘    └──────┬──────┘    └────────┬────────┘
+                                         │                    │
+                                  ┌──────┴──────┐      ┌─────┴──────┐
+                                  │   Cognito   │      │            │
+                                  │ (Google     │ ┌────▼─────┐ ┌───▼────────┐
+                                  │  OIDC)      │ │   RDS    │ │ Notion API │
+                                  └─────────────┘ │PostgreSQL│ └────────────┘
+                                                  └──────────┘
+```
+
+- CloudFront + S3: フロントエンドの静的ファイルを配信
+- API Gateway + Cognitoオーソライザー: 認証済みリクエストのみLambdaに転送
+- Lambda: FastAPI + Mangumアダプタでリクエスト処理
+
 ### データの流れ
+
+**開発環境:**
 
 1. ブラウザ → フロントエンド: ユーザー操作
 2. フロントエンド → バックエンド: API リクエスト (REST)
 3. バックエンド → PostgreSQL: ユーザー情報、トークン、ビュー設定の永続化
-4. バックエンド → Redis: Notion APIレスポンスのキャッシュ
-5. バックエンド → Notion API: ページ・リレーションデータの取得
+4. バックエンド → Notion API: ページ・リレーションデータの取得
+
+**本番環境:**
+
+1. ブラウザ → CloudFront: 静的ファイル取得 / APIリクエスト
+2. CloudFront → S3: フロントエンド配信
+3. CloudFront → API Gateway: APIリクエストの転送
+4. API Gateway → Cognito: トークン検証（Cognitoオーソライザー）
+5. API Gateway → Lambda: 認証済みリクエストの処理
+6. Lambda → RDS PostgreSQL: データの永続化
+7. Lambda → Notion API: ページ・リレーションデータの取得
 
 ## 3. 認証方式
 
-Google OIDC（OpenID Connect）を採用する。
+Cognito User Pool + Google OIDCフェデレーションを採用する。
 
 ```text
-ブラウザ → Google認証画面 → Googleからコールバック → バックエンドでIDトークン検証 → JWT発行
+ブラウザ → Cognito Hosted UI → Google認証 → Cognitoコールバック → JWT(IDトークン/アクセストークン)発行
 ```
 
-- ログイン: Google OIDCでIDトークンを取得し、バックエンドで検証後にJWTを発行
-- セッション管理: JWTをフロントエンドで保持し、APIリクエスト時にAuthorizationヘッダーで送信
+- ログイン: CognitoのHosted UIからGoogle OIDCフェデレーション認証を実行し、CognitoがJWTを発行
+- トークン検証: API GatewayのCognitoオーソライザーがトークンを検証（バックエンドでの自前JWT検証は不要）
+- セッション管理: Cognito発行のトークンをフロントエンドで保持し、APIリクエスト時にAuthorizationヘッダーで送信
 - Notionトークン: ユーザーが入力したインテグレーショントークンをAES-256-GCMで暗号化して保存
 
 ## 4. データモデル概要
