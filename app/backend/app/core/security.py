@@ -2,14 +2,16 @@
 Security utilities for JWT and encryption
 """
 
+import base64
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from datetime import UTC, datetime, timedelta
+from typing import Any
+
 import jwt
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2
-import base64
+
 from app.core.config import settings
 
 SALT_LENGTH = 16  # bytes
@@ -17,7 +19,7 @@ KEY_LENGTH = 32  # bytes
 KDF_ITERATIONS = 100_000
 
 
-def create_access_token(user_id: str, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(user_id: str, expires_delta: timedelta | None = None) -> str:
     """
     Create JWT access token for user authentication
 
@@ -28,7 +30,7 @@ def create_access_token(user_id: str, expires_delta: Optional[timedelta] = None)
     Returns:
         Encoded JWT token string
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     if expires_delta:
         expire = now + expires_delta
@@ -44,7 +46,7 @@ def create_access_token(user_id: str, expires_delta: Optional[timedelta] = None)
     return encoded_jwt
 
 
-def verify_token(token: str) -> Dict[str, Any]:
+def verify_token(token: str) -> dict[str, Any]:
     """
     Verify and decode JWT token
 

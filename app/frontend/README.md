@@ -13,7 +13,7 @@ React + TypeScript frontend for the Notion Relation View application.
 
 ## Directory Structure
 
-```
+```text
 frontend/
 ├── src/
 │   ├── components/      # React components (to be implemented)

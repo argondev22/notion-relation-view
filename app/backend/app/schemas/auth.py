@@ -3,7 +3,6 @@ Authentication schemas for request/response validation
 """
 
 from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Optional
 
 
 class GoogleLoginResponse(BaseModel):
@@ -31,7 +30,7 @@ class UserResponse(BaseModel):
     name: str = Field(
         ..., description="User's display name", min_length=1, max_length=255
     )
-    picture: Optional[str] = Field(
+    picture: str | None = Field(
         None, description="URL to user's profile picture", max_length=2048
     )
     plan: str = Field(
@@ -53,10 +52,10 @@ class AuthResponse(BaseModel):
     """Authentication response with user info"""
 
     success: bool = Field(..., description="Whether authentication was successful")
-    user: Optional[UserResponse] = Field(
+    user: UserResponse | None = Field(
         None, description="User information (only present on success)"
     )
-    error: Optional[str] = Field(
+    error: str | None = Field(
         None, description="Error message (only present on failure)", max_length=500
     )
 

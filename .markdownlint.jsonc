@@ -1,5 +1,6 @@
 {
   "default": true,
+  "MD007": { "indent": 4 }, // Match Prettier's list indentation
   "MD013": false, // Disable line length limit
   "MD033": false, // Allow HTML tags
   "MD041": false, // Allow non-heading first line

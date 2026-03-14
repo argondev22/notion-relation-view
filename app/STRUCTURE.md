@@ -4,7 +4,7 @@ Complete directory structure for the Notion Relation View application.
 
 ## Overview
 
-```
+```text
 app/
 ├── client/                 # Frontend (React + TypeScript + Vite)
 ├── server/                 # Backend (FastAPI + Python)
@@ -16,7 +16,7 @@ app/
 
 ## Frontend Structure (client/)
 
-```
+```text
 client/
 ├── src/
 │   ├── components/         # React components
@@ -65,7 +65,7 @@ client/
 
 ## Backend Structure (server/)
 
-```
+```text
 server/
 ├── alembic/                # Database migrations
 │   ├── versions/           # Migration files
@@ -114,7 +114,7 @@ server/
 
 ## Scripts Structure (scripts/)
 
-```
+```text
 scripts/
 └── setup.sh                # Initial setup script
 ```

@@ -3,7 +3,7 @@ Application Configuration
 """
 
 import os
-from typing import Optional
+
 from pydantic_settings import BaseSettings
 
 
@@ -31,8 +31,8 @@ class Settings(BaseSettings):
     )
 
     # Google OIDC
-    GOOGLE_CLIENT_ID: Optional[str] = os.getenv("GOOGLE_CLIENT_ID")
-    GOOGLE_CLIENT_SECRET: Optional[str] = os.getenv("GOOGLE_CLIENT_SECRET")
+    GOOGLE_CLIENT_ID: str | None = os.getenv("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: str | None = os.getenv("GOOGLE_CLIENT_SECRET")
     GOOGLE_REDIRECT_URI: str = os.getenv(
         "GOOGLE_REDIRECT_URI", "http://localhost:8000/api/auth/google/callback"
     )
