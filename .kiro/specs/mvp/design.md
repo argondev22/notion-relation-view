@@ -316,6 +316,7 @@ flowchart TD
 ```
 
 **要素**:
+
 - アプリケーションロゴ（中央上部）
 - キャッチコピー
 - Googleログインボタン（目立つデザイン）
@@ -347,6 +348,7 @@ flowchart TD
 ```
 
 **要素**:
+
 - 戻るボタン
 - 説明文
 - トークン入力フィールド（パスワード形式）
@@ -381,6 +383,7 @@ flowchart TD
 ```
 
 **レイアウト**:
+
 - **ヘッダー（固定）**:
   - ロゴ・アプリ名（左）
   - グローバル検索バー（中央）
@@ -429,6 +432,7 @@ flowchart TD
 ```
 
 **要素**:
+
 - ビュー名入力
 - データベース選択（複数選択可能）
 - リレーション抽出モード選択
@@ -463,6 +467,7 @@ flowchart TD
 ```
 
 **セクション**:
+
 - **Appearance**: テーマ設定
 - **Account**: ユーザー情報、サブスクリプション情報
 - **Notion Integration**: トークン管理
@@ -507,44 +512,47 @@ App
 ```typescript
 // グローバル状態
 interface AppState {
-  // 認証
-  user: User | null;
-  isAuthenticated: boolean;
+    // 認証
+    user: User | null;
+    isAuthenticated: boolean;
 
-  // Notion接続
-  notionConnected: boolean;
+    // Notion接続
+    notionConnected: boolean;
 
-  // グラフデータ
-  graphData: GraphData | null;
-  selectedDatabases: string[];
-  extractionMode: RelationExtractionMode;
+    // グラフデータ
+    graphData: GraphData | null;
+    selectedDatabases: string[];
+    extractionMode: RelationExtractionMode;
 
-  // UI状態
-  theme: ThemeMode;
-  sidebarOpen: boolean;
-  activeView: View | null;
+    // UI状態
+    theme: ThemeMode;
+    sidebarOpen: boolean;
+    activeView: View | null;
 
-  // モーダル
-  viewModalOpen: boolean;
-  settingsModalOpen: boolean;
+    // モーダル
+    viewModalOpen: boolean;
+    settingsModalOpen: boolean;
 
-  // 検索・フィルター
-  searchQuery: string;
-  highlightedNodes: string[];
+    // 検索・フィルター
+    searchQuery: string;
+    highlightedNodes: string[];
 }
 ```
 
 #### レスポンシブデザイン
 
 **デスクトップ（1024px以上）**:
+
 - サイドバー表示
 - 全機能利用可能
 
 **タブレット（768px - 1023px）**:
+
 - サイドバーは折りたたみ可能
 - ハンバーガーメニュー
 
 **モバイル（767px以下）**:
+
 - サイドバーはオーバーレイ表示
 - 簡略化されたUI
 - タッチ操作最適化
@@ -552,6 +560,7 @@ interface AppState {
 #### カラーパレット
 
 **ライトモード**:
+
 ```
 Background:    #FFFFFF
 Surface:       #F5F5F5
@@ -566,6 +575,7 @@ Error:         #EF4444
 ```
 
 **ダークモード**:
+
 ```
 Background:    #0F172A
 Surface:       #1E293B
@@ -605,6 +615,7 @@ Line Heights:
 **推奨アイコンライブラリ**: Lucide Icons または Heroicons
 
 **主要アイコン**:
+
 - ログイン: `LogIn`
 - ユーザー: `User`
 - 設定: `Settings`
@@ -621,18 +632,24 @@ Line Heights:
 #### アニメーション
 
 **トランジション**:
+
 ```css
 /* 標準 */
 transition: all 0.2s ease-in-out;
 
 /* テーマ切り替え */
-transition: background-color 0.3s ease, color 0.3s ease;
+transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 
 /* モーダル */
-transition: opacity 0.2s ease, transform 0.2s ease;
+transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 ```
 
 **ローディング**:
+
 - スピナー（データ取得中）
 - プログレスバー（メンション抽出中）
 - スケルトンスクリーン（初期ロード）
@@ -655,51 +672,51 @@ transition: opacity 0.2s ease, transform 0.2s ease;
 
 ```typescript
 interface FrontendAPIClient {
-  // Google OIDC認証
-  initiateGoogleLogin(): Promise<void>;
-  handleGoogleCallback(code: string): Promise<AuthResponse>;
-  logout(): Promise<void>;
+    // Google OIDC認証
+    initiateGoogleLogin(): Promise<void>;
+    handleGoogleCallback(code: string): Promise<AuthResponse>;
+    logout(): Promise<void>;
 
-  // Notion APIトークンを保存
-  saveNotionToken(token: string): Promise<void>;
+    // Notion APIトークンを保存
+    saveNotionToken(token: string): Promise<void>;
 
-  // グラフデータを取得（全データベース）
-  getGraphData(): Promise<GraphData>;
+    // グラフデータを取得（全データベース）
+    getGraphData(): Promise<GraphData>;
 
-  // データベース一覧を取得
-  getDatabases(): Promise<Database[]>;
+    // データベース一覧を取得
+    getDatabases(): Promise<Database[]>;
 
-  // ビュー設定を作成
-  createView(
-    name: string,
-    databaseIds: string[],
-    settings: ViewSettings,
-    extractionMode: RelationExtractionMode
-  ): Promise<View>;
+    // ビュー設定を作成
+    createView(
+        name: string,
+        databaseIds: string[],
+        settings: ViewSettings,
+        extractionMode: RelationExtractionMode
+    ): Promise<View>;
 
-  // ビュー設定一覧を取得
-  getViews(): Promise<View[]>;
+    // ビュー設定一覧を取得
+    getViews(): Promise<View[]>;
 
-  // 特定のビュー設定を取得
-  getView(viewId: string): Promise<View>;
+    // 特定のビュー設定を取得
+    getView(viewId: string): Promise<View>;
 
-  // ビュー設定を更新
-  updateView(
-    viewId: string,
-    name: string,
-    databaseIds: string[],
-    settings: ViewSettings,
-    extractionMode: RelationExtractionMode
-  ): Promise<View>;
+    // ビュー設定を更新
+    updateView(
+        viewId: string,
+        name: string,
+        databaseIds: string[],
+        settings: ViewSettings,
+        extractionMode: RelationExtractionMode
+    ): Promise<View>;
 
-  // ビュー設定を削除
-  deleteView(viewId: string): Promise<void>;
+    // ビュー設定を削除
+    deleteView(viewId: string): Promise<void>;
 
-  // ビュー設定に基づくグラフデータを取得
-  getViewGraphData(viewId: string): Promise<GraphData>;
+    // ビュー設定に基づくグラフデータを取得
+    getViewGraphData(viewId: string): Promise<GraphData>;
 
-  // ユーザープラン情報を取得
-  getUserPlan(): Promise<UserPlan>;
+    // ユーザープラン情報を取得
+    getUserPlan(): Promise<UserPlan>;
 }
 ```
 
@@ -711,29 +728,29 @@ interface FrontendAPIClient {
 
 ```typescript
 interface GraphVisualizer {
-  // グラフデータを初期化し、レイアウトを計算
-  initialize(nodes: Node[], edges: Edge[]): void;
+    // グラフデータを初期化し、レイアウトを計算
+    initialize(nodes: Node[], edges: Edge[]): void;
 
-  // グラフを描画
-  render(): void;
+    // グラフを描画
+    render(): void;
 
-  // ノードの位置を更新
-  updateNodePosition(nodeId: string, x: number, y: number): void;
+    // ノードの位置を更新
+    updateNodePosition(nodeId: string, x: number, y: number): void;
 
-  // ビューをパン
-  pan(deltaX: number, deltaY: number): void;
+    // ビューをパン
+    pan(deltaX: number, deltaY: number): void;
 
-  // ズームレベルを設定
-  zoom(level: number): void;
+    // ズームレベルを設定
+    zoom(level: number): void;
 
-  // ノードをハイライト
-  highlightNodes(nodeIds: string[]): void;
+    // ノードをハイライト
+    highlightNodes(nodeIds: string[]): void;
 
-  // 特定のノードにビューを中央揃え
-  centerOnNode(nodeId: string): void;
+    // 特定のノードにビューを中央揃え
+    centerOnNode(nodeId: string): void;
 
-  // ノードとエッジの表示/非表示を切り替え
-  setVisibility(nodeIds: string[], visible: boolean): void;
+    // ノードとエッジの表示/非表示を切り替え
+    setVisibility(nodeIds: string[], visible: boolean): void;
 }
 ```
 
@@ -751,33 +768,33 @@ interface GraphVisualizer {
 
 ```typescript
 interface ThemeManager {
-  // テーマを初期化（保存された設定またはシステム設定を読み込む）
-  initialize(): void;
+    // テーマを初期化（保存された設定またはシステム設定を読み込む）
+    initialize(): void;
 
-  // テーマを設定
-  setTheme(mode: ThemeMode): void;
+    // テーマを設定
+    setTheme(mode: ThemeMode): void;
 
-  // 現在のテーマを取得
-  getCurrentTheme(): 'light' | 'dark';
+    // 現在のテーマを取得
+    getCurrentTheme(): "light" | "dark";
 
-  // システムテーマを検出
-  detectSystemTheme(): 'light' | 'dark';
+    // システムテーマを検出
+    detectSystemTheme(): "light" | "dark";
 
-  // システムテーマ変更を監視
-  watchSystemTheme(callback: (theme: 'light' | 'dark') => void): void;
+    // システムテーマ変更を監視
+    watchSystemTheme(callback: (theme: "light" | "dark") => void): void;
 
-  // テーマをローカルストレージに保存
-  saveThemePreference(mode: ThemeMode): void;
+    // テーマをローカルストレージに保存
+    saveThemePreference(mode: ThemeMode): void;
 
-  // 保存されたテーマ設定を読み込む
-  loadThemePreference(): ThemeMode;
+    // 保存されたテーマ設定を読み込む
+    loadThemePreference(): ThemeMode;
 }
 ```
 
 **テーマモード**:
 
 ```typescript
-type ThemeMode = 'light' | 'dark' | 'system';
+type ThemeMode = "light" | "dark" | "system";
 ```
 
 **実装詳細**:
@@ -794,65 +811,65 @@ type ThemeMode = 'light' | 'dark' | 'system';
 
 ```typescript
 interface UIController {
-  // アプリケーションを初期化
-  initialize(): Promise<void>;
+    // アプリケーションを初期化
+    initialize(): Promise<void>;
 
-  // Google認証を開始
-  handleGoogleLogin(): Promise<void>;
+    // Google認証を開始
+    handleGoogleLogin(): Promise<void>;
 
-  // Google認証コールバックを処理
-  handleGoogleCallback(code: string): Promise<void>;
+    // Google認証コールバックを処理
+    handleGoogleCallback(code: string): Promise<void>;
 
-  // Notion APIトークン入力を処理
-  handleTokenInput(token: string): Promise<void>;
+    // Notion APIトークン入力を処理
+    handleTokenInput(token: string): Promise<void>;
 
-  // データ取得を開始
-  fetchData(): Promise<void>;
+    // データ取得を開始
+    fetchData(): Promise<void>;
 
-  // ビュー設定を作成
-  createView(
-    name: string,
-    databaseIds: string[],
-    extractionMode: RelationExtractionMode
-  ): Promise<void>;
+    // ビュー設定を作成
+    createView(
+        name: string,
+        databaseIds: string[],
+        extractionMode: RelationExtractionMode
+    ): Promise<void>;
 
-  // ビュー設定を選択
-  selectView(viewId: string): Promise<void>;
+    // ビュー設定を選択
+    selectView(viewId: string): Promise<void>;
 
-  // ビュー設定を更新
-  updateView(
-    viewId: string,
-    name: string,
-    databaseIds: string[],
-    extractionMode: RelationExtractionMode
-  ): Promise<void>;
+    // ビュー設定を更新
+    updateView(
+        viewId: string,
+        name: string,
+        databaseIds: string[],
+        extractionMode: RelationExtractionMode
+    ): Promise<void>;
 
-  // ビュー設定を削除
-  deleteView(viewId: string): Promise<void>;
+    // ビュー設定を削除
+    deleteView(viewId: string): Promise<void>;
 
-  // ビューURLを取得
-  getViewUrl(viewId: string): string;
+    // ビューURLを取得
+    getViewUrl(viewId: string): string;
 
-  // 検索クエリを処理
-  handleSearch(query: string): void;
+    // 検索クエリを処理
+    handleSearch(query: string): void;
 
-  // データベースフィルターを適用
-  applyDatabaseFilter(databaseIds: string[]): void;
+    // データベースフィルターを適用
+    applyDatabaseFilter(databaseIds: string[]): void;
 
-  // ノードクリックを処理
-  handleNodeClick(nodeId: string): void;
+    // ノードクリックを処理
+    handleNodeClick(nodeId: string): void;
 
-  // テーマを変更
-  handleThemeChange(mode: ThemeMode): void;
+    // テーマを変更
+    handleThemeChange(mode: ThemeMode): void;
 
-  // 進行状況を表示
-  showProgress(current: number, total: number): void;
+    // 進行状況を表示
+    showProgress(current: number, total: number): void;
 
-  // エラーを表示
-  showError(error: Error): void;
+    // エラーを表示
+    showError(error: Error): void;
 
-  // Pro機能へのアクセス試行を処理
-  handleProFeatureAccess(featureName: string): void;
+    // Pro機能へのアクセス試行を処理
+    handleProFeatureAccess(featureName: string): void;
 }
 ```
 
@@ -910,23 +927,23 @@ GET    /api/plan                  // ユーザーのプラン情報を取得
 
 ```typescript
 interface NotionAPIClient {
-  // APIトークンを検証し、接続を確立
-  authenticate(token: string): Promise<AuthResult>;
+    // APIトークンを検証し、接続を確立
+    authenticate(token: string): Promise<AuthResult>;
 
-  // すべてのアクセス可能なデータベースを取得
-  getDatabases(token: string): Promise<Database[]>;
+    // すべてのアクセス可能なデータベースを取得
+    getDatabases(token: string): Promise<Database[]>;
 
-  // 指定されたデータベースからページを取得
-  getPages(token: string, databaseId: string): Promise<Page[]>;
+    // 指定されたデータベースからページを取得
+    getPages(token: string, databaseId: string): Promise<Page[]>;
 
-  // すべてのアクセス可能なページを取得（データベース外も含む）
-  getAllPages(token: string): Promise<Page[]>;
+    // すべてのアクセス可能なページを取得（データベース外も含む）
+    getAllPages(token: string): Promise<Page[]>;
 
-  // ページのブロックコンテンツを取得
-  getPageBlocks(token: string, pageId: string): Promise<Block[]>;
+    // ページのブロックコンテンツを取得
+    getPageBlocks(token: string, pageId: string): Promise<Block[]>;
 
-  // バッチ処理でページデータを取得
-  fetchPagesInBatch(token: string, pageIds: string[]): Promise<Page[]>;
+    // バッチ処理でページデータを取得
+    fetchPagesInBatch(token: string, pageIds: string[]): Promise<Page[]>;
 }
 ```
 
@@ -945,75 +962,75 @@ interface NotionAPIClient {
 
 ```typescript
 interface RelationExtractor {
-  // リレーションを抽出
-  extractRelations(
-    token: string,
-    pages: Page[],
-    mode: RelationExtractionMode
-  ): Promise<Relation[]>;
+    // リレーションを抽出
+    extractRelations(
+        token: string,
+        pages: Page[],
+        mode: RelationExtractionMode
+    ): Promise<Relation[]>;
 }
 
-type RelationExtractionMode = 'property' | 'mention' | 'both';
+type RelationExtractionMode = "property" | "mention" | "both";
 
 // プロパティベースの抽出（Free + Pro）
 class PropertyRelationExtractor implements RelationExtractor {
-  extractRelations(
-    token: string,
-    pages: Page[],
-    mode: RelationExtractionMode
-  ): Promise<Relation[]> {
-    // ページのリレーションプロパティを解析
-  }
+    extractRelations(
+        token: string,
+        pages: Page[],
+        mode: RelationExtractionMode
+    ): Promise<Relation[]> {
+        // ページのリレーションプロパティを解析
+    }
 }
 
 // メンションベースの抽出（Pro限定）
 class MentionRelationExtractor implements RelationExtractor {
-  constructor(private notionClient: NotionAPIClient) {}
+    constructor(private notionClient: NotionAPIClient) {}
 
-  extractRelations(
-    token: string,
-    pages: Page[],
-    mode: RelationExtractionMode
-  ): Promise<Relation[]> {
-    // ページのブロックコンテンツを取得し、メンションを抽出
-  }
+    extractRelations(
+        token: string,
+        pages: Page[],
+        mode: RelationExtractionMode
+    ): Promise<Relation[]> {
+        // ページのブロックコンテンツを取得し、メンションを抽出
+    }
 }
 
 // 統合抽出器
 class CombinedRelationExtractor implements RelationExtractor {
-  constructor(
-    private propertyExtractor: PropertyRelationExtractor,
-    private mentionExtractor: MentionRelationExtractor
-  ) {}
+    constructor(
+        private propertyExtractor: PropertyRelationExtractor,
+        private mentionExtractor: MentionRelationExtractor
+    ) {}
 
-  async extractRelations(
-    token: string,
-    pages: Page[],
-    mode: RelationExtractionMode
-  ): Promise<Relation[]> {
-    if (mode === 'property') {
-      return this.propertyExtractor.extractRelations(token, pages, mode);
-    } else if (mode === 'mention') {
-      return this.mentionExtractor.extractRelations(token, pages, mode);
-    } else {
-      // 両方を取得し、重複を排除
-      const propertyRelations = await this.propertyExtractor.extractRelations(
-        token,
-        pages,
-        'property'
-      );
-      const mentionRelations = await this.mentionExtractor.extractRelations(
-        token,
-        pages,
-        'mention'
-      );
-      return this.deduplicateRelations([...propertyRelations, ...mentionRelations]);
+    async extractRelations(
+        token: string,
+        pages: Page[],
+        mode: RelationExtractionMode
+    ): Promise<Relation[]> {
+        if (mode === "property") {
+            return this.propertyExtractor.extractRelations(token, pages, mode);
+        } else if (mode === "mention") {
+            return this.mentionExtractor.extractRelations(token, pages, mode);
+        } else {
+            // 両方を取得し、重複を排除
+            const propertyRelations = await this.propertyExtractor.extractRelations(
+                token,
+                pages,
+                "property"
+            );
+            const mentionRelations = await this.mentionExtractor.extractRelations(
+                token,
+                pages,
+                "mention"
+            );
+            return this.deduplicateRelations([...propertyRelations, ...mentionRelations]);
+        }
     }
-  }
 
-  private deduplicateRelations(relations: Relation[]): Relation[] {
-    // 重複を排除（sourcePageId + targetPageId の組み合わせで判定）
-  }
+    private deduplicateRelations(relations: Relation[]): Relation[] {
+        // 重複を排除（sourcePageId + targetPageId の組み合わせで判定）
+    }
 }
 ```
 
@@ -1025,34 +1042,34 @@ class CombinedRelationExtractor implements RelationExtractor {
 
 ```typescript
 interface PlanEnforcer {
-  // ユーザーのプランを取得
-  getUserPlan(userId: string): Promise<UserPlan>;
+    // ユーザーのプランを取得
+    getUserPlan(userId: string): Promise<UserPlan>;
 
-  // 機能へのアクセスを確認
-  canAccessFeature(userId: string, feature: Feature): Promise<boolean>;
+    // 機能へのアクセスを確認
+    canAccessFeature(userId: string, feature: Feature): Promise<boolean>;
 
-  // ビュー作成を確認
-  canCreateView(userId: string): Promise<boolean>;
+    // ビュー作成を確認
+    canCreateView(userId: string): Promise<boolean>;
 
-  // ノード数制限を適用
-  applyNodeLimit(userId: string, nodes: Node[]): Node[];
+    // ノード数制限を適用
+    applyNodeLimit(userId: string, nodes: Node[]): Node[];
 
-  // リレーション抽出モードを確認
-  canUseExtractionMode(userId: string, mode: RelationExtractionMode): Promise<boolean>;
+    // リレーション抽出モードを確認
+    canUseExtractionMode(userId: string, mode: RelationExtractionMode): Promise<boolean>;
 }
 
 type Feature =
-  | 'export'
-  | 'custom_theme'
-  | 'advanced_filtering'
-  | 'layout_algorithm'
-  | 'mention_extraction';
+    | "export"
+    | "custom_theme"
+    | "advanced_filtering"
+    | "layout_algorithm"
+    | "mention_extraction";
 
 interface UserPlan {
-  plan: 'free' | 'pro';
-  viewLimit: number | null; // null = 無制限
-  nodeLimit: number | null; // null = 無制限
-  features: Feature[];
+    plan: "free" | "pro";
+    viewLimit: number | null; // null = 無制限
+    nodeLimit: number | null; // null = 無制限
+    features: Feature[];
 }
 ```
 
@@ -1064,35 +1081,35 @@ interface UserPlan {
 
 ```typescript
 interface AuthProvider {
-  // Google OIDCログインURLを生成
-  getGoogleLoginUrl(): string;
+    // Google OIDCログインURLを生成
+    getGoogleLoginUrl(): string;
 
-  // Google認証コールバックを処理
-  handleGoogleCallback(code: string): Promise<GoogleUser>;
+    // Google認証コールバックを処理
+    handleGoogleCallback(code: string): Promise<GoogleUser>;
 
-  // IDトークンを検証
-  verifyIdToken(idToken: string): Promise<GoogleUser>;
+    // IDトークンを検証
+    verifyIdToken(idToken: string): Promise<GoogleUser>;
 
-  // セッショントークンを生成
-  createSession(user: User): Promise<SessionToken>;
+    // セッショントークンを生成
+    createSession(user: User): Promise<SessionToken>;
 
-  // セッションを検証
-  validateSession(sessionToken: string): Promise<User>;
+    // セッションを検証
+    validateSession(sessionToken: string): Promise<User>;
 
-  // セッションを無効化
-  logout(sessionToken: string): Promise<void>;
+    // セッションを無効化
+    logout(sessionToken: string): Promise<void>;
 
-  // Notionトークンを暗号化
-  encryptNotionToken(token: string): string;
+    // Notionトークンを暗号化
+    encryptNotionToken(token: string): string;
 
-  // Notionトークンを復号化
-  decryptNotionToken(encryptedToken: string): string;
+    // Notionトークンを復号化
+    decryptNotionToken(encryptedToken: string): string;
 }
 
 interface GoogleUser {
-  email: string;
-  name: string;
-  picture: string;
+    email: string;
+    name: string;
+    picture: string;
 }
 ```
 
@@ -1111,17 +1128,17 @@ interface GoogleUser {
 
 ```typescript
 interface CacheManager {
-  // グラフデータをRedisキャッシュに保存
-  cacheGraphData(userId: string, data: GraphData, ttl: number): Promise<void>;
+    // グラフデータをRedisキャッシュに保存
+    cacheGraphData(userId: string, data: GraphData, ttl: number): Promise<void>;
 
-  // Redisキャッシュからグラフデータを取得
-  getGraphData(userId: string): Promise<GraphData | null>;
+    // Redisキャッシュからグラフデータを取得
+    getGraphData(userId: string): Promise<GraphData | null>;
 
-  // キャッシュを無効化
-  invalidateCache(userId: string): Promise<void>;
+    // キャッシュを無効化
+    invalidateCache(userId: string): Promise<void>;
 
-  // キャッシュの有効期限を確認
-  isCacheValid(userId: string): Promise<boolean>;
+    // キャッシュの有効期限を確認
+    isCacheValid(userId: string): Promise<boolean>;
 }
 ```
 
@@ -1155,53 +1172,53 @@ REDIS_MAX_CONNECTIONS = 10
 
 ```typescript
 interface DatabaseService {
-  // ユーザーを作成（Google認証情報から）
-  createUser(email: string, name: string, picture: string): Promise<User>;
+    // ユーザーを作成（Google認証情報から）
+    createUser(email: string, name: string, picture: string): Promise<User>;
 
-  // ユーザーを取得
-  getUser(userId: string): Promise<User | null>;
+    // ユーザーを取得
+    getUser(userId: string): Promise<User | null>;
 
-  // メールアドレスでユーザーを取得
-  getUserByEmail(email: string): Promise<User | null>;
+    // メールアドレスでユーザーを取得
+    getUserByEmail(email: string): Promise<User | null>;
 
-  // Notionトークンを保存
-  saveNotionToken(userId: string, encryptedToken: string): Promise<void>;
+    // Notionトークンを保存
+    saveNotionToken(userId: string, encryptedToken: string): Promise<void>;
 
-  // Notionトークンを取得
-  getNotionToken(userId: string): Promise<string | null>;
+    // Notionトークンを取得
+    getNotionToken(userId: string): Promise<string | null>;
 
-  // ビュー設定を作成
-  createView(
-    userId: string,
-    name: string,
-    databaseIds: string[],
-    settings: ViewSettings,
-    extractionMode: RelationExtractionMode
-  ): Promise<View>;
+    // ビュー設定を作成
+    createView(
+        userId: string,
+        name: string,
+        databaseIds: string[],
+        settings: ViewSettings,
+        extractionMode: RelationExtractionMode
+    ): Promise<View>;
 
-  // ユーザーのビュー設定一覧を取得
-  getViews(userId: string): Promise<View[]>;
+    // ユーザーのビュー設定一覧を取得
+    getViews(userId: string): Promise<View[]>;
 
-  // 特定のビュー設定を取得
-  getView(viewId: string): Promise<View | null>;
+    // 特定のビュー設定を取得
+    getView(viewId: string): Promise<View | null>;
 
-  // ビュー設定を更新
-  updateView(
-    viewId: string,
-    name: string,
-    databaseIds: string[],
-    settings: ViewSettings,
-    extractionMode: RelationExtractionMode
-  ): Promise<View>;
+    // ビュー設定を更新
+    updateView(
+        viewId: string,
+        name: string,
+        databaseIds: string[],
+        settings: ViewSettings,
+        extractionMode: RelationExtractionMode
+    ): Promise<View>;
 
-  // ビュー設定を削除
-  deleteView(viewId: string): Promise<void>;
+    // ビュー設定を削除
+    deleteView(viewId: string): Promise<void>;
 
-  // ユーザーのプラン情報を取得
-  getUserPlan(userId: string): Promise<UserPlan>;
+    // ユーザーのプラン情報を取得
+    getUserPlan(userId: string): Promise<UserPlan>;
 
-  // ユーザーのプランを更新
-  updateUserPlan(userId: string, plan: 'free' | 'pro'): Promise<void>;
+    // ユーザーのプランを更新
+    updateUserPlan(userId: string, plan: "free" | "pro"): Promise<void>;
 }
 ```
 
@@ -1213,12 +1230,12 @@ interface DatabaseService {
 
 ```typescript
 interface Node {
-  id: string; // NotionページID
-  title: string; // ページタイトル
-  databaseId: string; // 所属するデータベースID
-  x: number; // グラフ上のX座標
-  y: number; // グラフ上のY座標
-  visible: boolean; // 表示/非表示フラグ
+    id: string; // NotionページID
+    title: string; // ページタイトル
+    databaseId: string; // 所属するデータベースID
+    x: number; // グラフ上のX座標
+    y: number; // グラフ上のY座標
+    visible: boolean; // 表示/非表示フラグ
 }
 ```
 
@@ -1226,11 +1243,11 @@ interface Node {
 
 ```typescript
 interface Edge {
-  id: string; // エッジの一意ID
-  sourceId: string; // 始点ノードID
-  targetId: string; // 終点ノードID
-  relationProperty: string; // リレーションプロパティ名
-  visible: boolean; // 表示/非表示フラグ
+    id: string; // エッジの一意ID
+    sourceId: string; // 始点ノードID
+    targetId: string; // 終点ノードID
+    relationProperty: string; // リレーションプロパティ名
+    visible: boolean; // 表示/非表示フラグ
 }
 ```
 
@@ -1238,9 +1255,9 @@ interface Edge {
 
 ```typescript
 interface Database {
-  id: string; // データベースID
-  title: string; // データベース名
-  hidden: boolean; // 非表示フラグ
+    id: string; // データベースID
+    title: string; // データベース名
+    hidden: boolean; // 非表示フラグ
 }
 ```
 
@@ -1248,9 +1265,9 @@ interface Database {
 
 ```typescript
 interface ViewSettings {
-  zoomLevel: number; // ズームレベル
-  panX: number; // パン位置X
-  panY: number; // パン位置Y
+    zoomLevel: number; // ズームレベル
+    panX: number; // パン位置X
+    panY: number; // パン位置Y
 }
 ```
 
@@ -1258,52 +1275,52 @@ interface ViewSettings {
 
 ```typescript
 interface View {
-  id: string; // ビューID（一意）
-  name: string; // ビュー名
-  databaseIds: string[]; // 表示するデータベースIDリスト
-  settings: ViewSettings; // ビュー設定（ズーム、パン）
-  extractionMode: RelationExtractionMode; // リレーション抽出モード
-  url: string; // ビュー専用URL（例: /view/{id}）
+    id: string; // ビューID（一意）
+    name: string; // ビュー名
+    databaseIds: string[]; // 表示するデータベースIDリスト
+    settings: ViewSettings; // ビュー設定（ズーム、パン）
+    extractionMode: RelationExtractionMode; // リレーション抽出モード
+    url: string; // ビュー専用URL（例: /view/{id}）
 }
 ```
 
 #### RelationExtractionMode（リレーション抽出モード）
 
 ```typescript
-type RelationExtractionMode = 'property' | 'mention' | 'both';
+type RelationExtractionMode = "property" | "mention" | "both";
 ```
 
 #### ThemeMode（テーマモード）
 
 ```typescript
-type ThemeMode = 'light' | 'dark' | 'system';
+type ThemeMode = "light" | "dark" | "system";
 ```
 
 #### UserPlan（ユーザープラン）
 
 ```typescript
 interface UserPlan {
-  plan: 'free' | 'pro';
-  viewLimit: number | null; // null = 無制限
-  nodeLimit: number | null; // null = 無制限
-  features: Feature[];
+    plan: "free" | "pro";
+    viewLimit: number | null; // null = 無制限
+    nodeLimit: number | null; // null = 無制限
+    features: Feature[];
 }
 
 type Feature =
-  | 'export'
-  | 'custom_theme'
-  | 'advanced_filtering'
-  | 'layout_algorithm'
-  | 'mention_extraction';
+    | "export"
+    | "custom_theme"
+    | "advanced_filtering"
+    | "layout_algorithm"
+    | "mention_extraction";
 ```
 
 #### GraphData（グラフデータ）
 
 ```typescript
 interface GraphData {
-  nodes: Node[]; // ノードリスト
-  edges: Edge[]; // エッジリスト
-  databases: Database[]; // データベースリスト
+    nodes: Node[]; // ノードリスト
+    edges: Edge[]; // エッジリスト
+    databases: Database[]; // データベースリスト
 }
 ```
 
@@ -1311,9 +1328,9 @@ interface GraphData {
 
 ```typescript
 interface AuthResponse {
-  success: boolean; // 認証成功フラグ
-  user?: User; // ユーザー情報
-  error?: string; // エラーメッセージ
+    success: boolean; // 認証成功フラグ
+    user?: User; // ユーザー情報
+    error?: string; // エラーメッセージ
 }
 ```
 
@@ -1323,13 +1340,13 @@ interface AuthResponse {
 
 ```typescript
 interface User {
-  id: string; // ユーザーID
-  email: string; // Googleアカウントのメールアドレス
-  name: string; // Googleアカウントの名前
-  picture: string; // Googleアカウントのプロフィール画像URL
-  plan: 'free' | 'pro'; // サブスクリプションプラン
-  createdAt: Date; // 作成日時
-  updatedAt: Date; // 更新日時
+    id: string; // ユーザーID
+    email: string; // Googleアカウントのメールアドレス
+    name: string; // Googleアカウントの名前
+    picture: string; // Googleアカウントのプロフィール画像URL
+    plan: "free" | "pro"; // サブスクリプションプラン
+    createdAt: Date; // 作成日時
+    updatedAt: Date; // 更新日時
 }
 ```
 
@@ -1337,10 +1354,10 @@ interface User {
 
 ```typescript
 interface NotionToken {
-  userId: string; // ユーザーID
-  encryptedToken: string; // 暗号化されたNotionトークン
-  createdAt: Date; // 作成日時
-  updatedAt: Date; // 更新日時
+    userId: string; // ユーザーID
+    encryptedToken: string; // 暗号化されたNotionトークン
+    createdAt: Date; // 作成日時
+    updatedAt: Date; // 更新日時
 }
 ```
 
@@ -1348,10 +1365,10 @@ interface NotionToken {
 
 ```typescript
 interface Page {
-  id: string; // ページID
-  title: string; // ページタイトル
-  databaseId: string; // 所属するデータベースID
-  properties: Property[]; // ページプロパティ
+    id: string; // ページID
+    title: string; // ページタイトル
+    databaseId: string; // 所属するデータベースID
+    properties: Property[]; // ページプロパティ
 }
 ```
 
@@ -1359,26 +1376,26 @@ interface Page {
 
 ```typescript
 interface Block {
-  id: string; // ブロックID
-  type: string; // ブロックタイプ（paragraph, heading_1, etc.）
-  content: RichText[]; // リッチテキストコンテンツ
+    id: string; // ブロックID
+    type: string; // ブロックタイプ（paragraph, heading_1, etc.）
+    content: RichText[]; // リッチテキストコンテンツ
 }
 
 interface RichText {
-  type: 'text' | 'mention' | 'equation';
-  text?: TextContent;
-  mention?: MentionContent;
-  plain_text: string;
+    type: "text" | "mention" | "equation";
+    text?: TextContent;
+    mention?: MentionContent;
+    plain_text: string;
 }
 
 interface TextContent {
-  content: string;
-  link?: { url: string };
+    content: string;
+    link?: { url: string };
 }
 
 interface MentionContent {
-  type: 'page' | 'database' | 'user' | 'date';
-  page?: { id: string };
+    type: "page" | "database" | "user" | "date";
+    page?: { id: string };
 }
 ```
 
@@ -1386,10 +1403,10 @@ interface MentionContent {
 
 ```typescript
 interface Relation {
-  sourcePageId: string; // リレーション元ページID
-  targetPageId: string; // リレーション先ページID
-  propertyName?: string; // リレーションプロパティ名（プロパティベースの場合）
-  type: 'property' | 'mention'; // リレーションタイプ
+    sourcePageId: string; // リレーション元ページID
+    targetPageId: string; // リレーション先ページID
+    propertyName?: string; // リレーションプロパティ名（プロパティベースの場合）
+    type: "property" | "mention"; // リレーションタイプ
 }
 ```
 
@@ -1397,10 +1414,10 @@ interface Relation {
 
 ```typescript
 interface CachedGraphData {
-  userId: string; // ユーザーID
-  data: GraphData; // グラフデータ
-  cachedAt: Date; // キャッシュ日時
-  expiresAt: Date; // 有効期限
+    userId: string; // ユーザーID
+    data: GraphData; // グラフデータ
+    cachedAt: Date; // キャッシュ日時
+    expiresAt: Date; // 有効期限
 }
 ```
 
@@ -1408,9 +1425,9 @@ interface CachedGraphData {
 
 ```typescript
 interface AuthResult {
-  success: boolean; // 認証成功フラグ
-  workspaceName?: string; // ワークスペース名
-  error?: string; // エラーメッセージ
+    success: boolean; // 認証成功フラグ
+    workspaceName?: string; // ワークスペース名
+    error?: string; // エラーメッセージ
 }
 ```
 
@@ -1418,8 +1435,8 @@ interface AuthResult {
 
 ```typescript
 interface SessionToken {
-  token: string; // JWTトークン
-  expiresAt: Date; // 有効期限
+    token: string; // JWTトークン
+    expiresAt: Date; // 有効期限
 }
 ```
 
@@ -1427,16 +1444,16 @@ interface SessionToken {
 
 ```typescript
 interface View {
-  id: string; // ビューID
-  userId: string; // ユーザーID
-  name: string; // ビュー名
-  databaseIds: string[]; // 表示するデータベースIDリスト
-  zoomLevel: number; // ズームレベル
-  panX: number; // パン位置X
-  panY: number; // パン位置Y
-  extractionMode: RelationExtractionMode; // リレーション抽出モード
-  createdAt: Date; // 作成日時
-  updatedAt: Date; // 更新日時
+    id: string; // ビューID
+    userId: string; // ユーザーID
+    name: string; // ビュー名
+    databaseIds: string[]; // 表示するデータベースIDリスト
+    zoomLevel: number; // ズームレベル
+    panX: number; // パン位置X
+    panY: number; // パン位置Y
+    extractionMode: RelationExtractionMode; // リレーション抽出モード
+    createdAt: Date; // 作成日時
+    updatedAt: Date; // 更新日時
 }
 ```
 
@@ -1444,9 +1461,9 @@ interface View {
 
 ```typescript
 interface GoogleUser {
-  email: string; // メールアドレス
-  name: string; // 名前
-  picture: string; // プロフィール画像URL
+    email: string; // メールアドレス
+    name: string; // 名前
+    picture: string; // プロフィール画像URL
 }
 ```
 
@@ -1617,37 +1634,37 @@ interface GoogleUser {
 #### フロントエンド
 
 1. **認証エラー**
-   - 無効なログイン情報: ユーザーに再入力を促す
-   - セッション期限切れ: 自動的にログイン画面にリダイレクト
+    - 無効なログイン情報: ユーザーに再入力を促す
+    - セッション期限切れ: 自動的にログイン画面にリダイレクト
 
 2. **ネットワークエラー**
-   - バックエンドへの接続失敗: 再試行オプションを提供
-   - タイムアウト: エラーメッセージを表示し、再試行を促す
+    - バックエンドへの接続失敗: 再試行オプションを提供
+    - タイムアウト: エラーメッセージを表示し、再試行を促す
 
 3. **データエラー**
-   - 不正なレスポンス形式: デフォルト値を使用し、警告を表示
-   - 欠損データ: 部分的なデータで動作を継続
+    - 不正なレスポンス形式: デフォルト値を使用し、警告を表示
+    - 欠損データ: 部分的なデータで動作を継続
 
 #### バックエンド
 
 1. **認証エラー**
-   - 無効なAPIトークン: 401 Unauthorizedを返し、トークン再入力を促す
-   - 権限不足: 403 Forbiddenを返し、アクセスできないリソースを明示
+    - 無効なAPIトークン: 401 Unauthorizedを返し、トークン再入力を促す
+    - 権限不足: 403 Forbiddenを返し、アクセスできないリソースを明示
 
 2. **ネットワークエラー**
-   - Notion APIへの接続失敗: 再試行ロジックを実行（最大3回）
-   - タイムアウト: 504 Gateway Timeoutを返す
+    - Notion APIへの接続失敗: 再試行ロジックを実行（最大3回）
+    - タイムアウト: 504 Gateway Timeoutを返す
 
 3. **APIエラー**
-   - レート制限: 429 Too Many Requestsを返し、Retry-Afterヘッダーで待機時間を通知
-   - 無効なリクエスト: 400 Bad Requestを返し、エラー詳細を含める
+    - レート制限: 429 Too Many Requestsを返し、Retry-Afterヘッダーで待機時間を通知
+    - 無効なリクエスト: 400 Bad Requestを返し、エラー詳細を含める
 
 4. **データベースエラー**
-   - 接続失敗: 500 Internal Server Errorを返し、エラーをログに記録
-   - クエリエラー: トランザクションをロールバックし、エラーを返す
+    - 接続失敗: 500 Internal Server Errorを返し、エラーをログに記録
+    - クエリエラー: トランザクションをロールバックし、エラーを返す
 
 5. **暗号化エラー**
-   - 復号化失敗: トークンを無効化し、ユーザーに再入力を促す
+    - 復号化失敗: トークンを無効化し、ユーザーに再入力を促す
 
 ### エラーログ
 
@@ -1865,31 +1882,31 @@ CREATE INDEX idx_views_user_id ON views(user_id);
 **Docker Compose設定例**:
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
-  postgres:
-    image: postgres:15
-    environment:
-      POSTGRES_DB: notion_relation_view
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    postgres:
+        image: postgres:15
+        environment:
+            POSTGRES_DB: notion_relation_view
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+        ports:
+            - "5432:5432"
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes
+    redis:
+        image: redis:7-alpine
+        ports:
+            - "6379:6379"
+        volumes:
+            - redis_data:/data
+        command: redis-server --appendonly yes
 
 volumes:
-  postgres_data:
-  redis_data:
+    postgres_data:
+    redis_data:
 ```
 
 ### 本番環境

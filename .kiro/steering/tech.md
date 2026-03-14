@@ -170,19 +170,19 @@ python app/backend/app/main.py
 ### When to Use Each Method
 
 1. **Makefileコマンド** (`make test`, `make test-backend`など)
-   - 推奨される方法
-   - プロジェクト標準のコマンド
-   - 自動的にコンテナ内で実行される
+    - 推奨される方法
+    - プロジェクト標準のコマンド
+    - 自動的にコンテナ内で実行される
 
 2. **シェルアクセス** (`make shell-backend`, `make shell-frontend`)
-   - 複数のコマンドを連続して実行する場合
-   - デバッグやインタラクティブな作業
-   - 開発中の試行錯誤
+    - 複数のコマンドを連続して実行する場合
+    - デバッグやインタラクティブな作業
+    - 開発中の試行錯誤
 
 3. **docker compose exec**
-   - Makefileに定義されていないコマンド
-   - CI/CDパイプラインでの使用
-   - スクリプト内での自動化
+    - Makefileに定義されていないコマンド
+    - CI/CDパイプラインでの使用
+    - スクリプト内での自動化
 
 ### AI Assistant Guidelines
 

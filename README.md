@@ -67,29 +67,29 @@ sequenceDiagram
 
 1. **Clone the repository**
 
-   ```bash
-   git clone <repo-url> <project-name>
-   cd <project-name>
-   ```
+    ```bash
+    git clone <repo-url> <project-name>
+    cd <project-name>
+    ```
 
 2. **Initialize the project**
 
-   ```bash
-   make init
-   ```
+    ```bash
+    make init
+    ```
 
-   This command will:
-   - Create `.env` file from `.env.example`
-   - Build Docker containers
-   - Start all services
-   - Run database migrations
-   - Check service health
+    This command will:
+    - Create `.env` file from `.env.example`
+    - Build Docker containers
+    - Start all services
+    - Run database migrations
+    - Check service health
 
 3. **Configure Google OAuth** (required for authentication)
-   - Edit `app/.env` and add your Google OAuth credentials
-   - Restart services: `make restart`
+    - Edit `app/.env` and add your Google OAuth credentials
+    - Restart services: `make restart`
 
 4. **Access your application**
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:8000
-   - API Docs: http://localhost:8000/docs
+    - Frontend: http://localhost:3000
+    - Backend API: http://localhost:8000
+    - API Docs: http://localhost:8000/docs

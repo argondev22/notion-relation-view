@@ -122,6 +122,7 @@ scripts/
 ## Configuration Files
 
 ### Root Level (app/)
+
 - `docker-compose.yml` - Docker services configuration
 - `.env.example` - Environment variables template
 - `.env` - Actual environment variables (not in git)
@@ -130,6 +131,7 @@ scripts/
 - `STRUCTURE.md` - This file
 
 ### Frontend (client/)
+
 - `package.json` - Node.js dependencies and scripts
 - `tsconfig.json` - TypeScript configuration
 - `vite.config.ts` - Vite build configuration
@@ -137,6 +139,7 @@ scripts/
 - `Dockerfile` - Docker image definition
 
 ### Backend (server/)
+
 - `requirements.txt` - Python dependencies
 - `alembic.ini` - Database migration configuration
 - `pytest.ini` - Test configuration
@@ -145,6 +148,7 @@ scripts/
 ## Key Design Decisions
 
 ### Frontend
+
 - **React 18**: Modern React with hooks and concurrent features
 - **TypeScript**: Type safety and better developer experience
 - **Vite**: Fast build tool with HMR
@@ -152,6 +156,7 @@ scripts/
 - **Axios**: HTTP client for API calls
 
 ### Backend
+
 - **FastAPI**: Modern, fast Python web framework
 - **SQLAlchemy**: ORM for database operations
 - **Alembic**: Database migration management
@@ -159,6 +164,7 @@ scripts/
 - **Redis**: Caching layer for Notion API data
 
 ### Infrastructure
+
 - **Docker Compose**: Multi-container orchestration
 - **PostgreSQL**: Relational database
 - **Redis**: In-memory cache

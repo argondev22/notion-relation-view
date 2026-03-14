@@ -40,20 +40,23 @@ frontend/
 ### Local Development
 
 1. Install dependencies:
-   ```bash
-   npm install
-   ```
+
+    ```bash
+    npm install
+    ```
 
 2. Set up environment variables:
-   ```bash
-   # Create .env.local file
-   echo "VITE_API_URL=http://localhost:8000" > .env.local
-   ```
+
+    ```bash
+    # Create .env.local file
+    echo "VITE_API_URL=http://localhost:8000" > .env.local
+    ```
 
 3. Start the development server:
-   ```bash
-   npm run dev
-   ```
+
+    ```bash
+    npm run dev
+    ```
 
 4. Open http://localhost:3000
 
@@ -77,11 +80,13 @@ docker compose up frontend
 ## Testing
 
 Run tests:
+
 ```bash
 npm test
 ```
 
 Run tests in watch mode:
+
 ```bash
 npm run test:watch
 ```
