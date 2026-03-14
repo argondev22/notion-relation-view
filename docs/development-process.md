@@ -21,7 +21,7 @@
 - 非機能要件（パフォーマンス、セキュリティ等）
 - 制約と前提条件
 
-**成果物:** `docs/prd.md`
+**成果物:** `docs/requirements.md`
 
 ### フェーズ2: アーキテクチャ設計（最初に1回）
 
@@ -35,7 +35,7 @@
 
 これらはシステム全体に影響するため、最初に決定する。
 
-**成果物:** `docs/architecture.md`
+**成果物:** `docs/design.md`
 
 ### フェーズ3: スプリントサイクル（繰り返し）
 
@@ -67,8 +67,8 @@
 ```text
 docs/
 ├── development-process.md    # 本ドキュメント（開発プロセス定義）
-├── prd.md                    # プロダクト要件定義書
-├── architecture.md           # アーキテクチャ設計
+├── requirements.md           # プロダクト要件定義書
+├── design.md                 # アーキテクチャ設計
 └── sprints/
     ├── sprint-1/
     │   └── feature-design.md
