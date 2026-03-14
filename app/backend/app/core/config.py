@@ -26,9 +26,7 @@ class Settings(BaseSettings):
     JWT_EXPIRATION_HOURS: int = 24
 
     # Encryption
-    ENCRYPTION_KEY: str = os.getenv(
-        "ENCRYPTION_KEY", "your-encryption-key-change-in-production"
-    )
+    ENCRYPTION_KEY: str = os.getenv("ENCRYPTION_KEY", "your-encryption-key-change-in-production")
 
     # Google OIDC
     GOOGLE_CLIENT_ID: str | None = os.getenv("GOOGLE_CLIENT_ID")

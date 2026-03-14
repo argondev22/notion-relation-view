@@ -39,9 +39,7 @@ def create_access_token(user_id: str, expires_delta: timedelta | None = None) ->
 
     payload = {"sub": user_id, "exp": expire, "iat": now, "type": "access"}
 
-    encoded_jwt = jwt.encode(
-        payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM
-    )
+    encoded_jwt = jwt.encode(payload, settings.JWT_SECRET, algorithm=settings.JWT_ALGORITHM)
 
     return encoded_jwt
 
@@ -60,9 +58,7 @@ def verify_token(token: str) -> dict[str, Any]:
         jwt.ExpiredSignatureError: Token has expired
         jwt.InvalidTokenError: Token is invalid
     """
-    payload = jwt.decode(
-        token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM]
-    )
+    payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[settings.JWT_ALGORITHM])
     return payload
 
 

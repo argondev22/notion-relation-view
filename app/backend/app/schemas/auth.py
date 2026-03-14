@@ -27,12 +27,8 @@ class UserResponse(BaseModel):
 
     id: str = Field(..., description="Unique user identifier", min_length=1)
     email: EmailStr = Field(..., description="User's email address")
-    name: str = Field(
-        ..., description="User's display name", min_length=1, max_length=255
-    )
-    picture: str | None = Field(
-        None, description="URL to user's profile picture", max_length=2048
-    )
+    name: str = Field(..., description="User's display name", min_length=1, max_length=255)
+    picture: str | None = Field(None, description="URL to user's profile picture", max_length=2048)
     plan: str = Field(
         default="free", description="User's subscription plan", pattern="^(free|pro)$"
     )
@@ -78,6 +74,4 @@ class LogoutResponse(BaseModel):
     """Logout response"""
 
     success: bool = Field(..., description="Whether logout was successful")
-    message: str = Field(
-        ..., description="Logout status message", min_length=1, max_length=200
-    )
+    message: str = Field(..., description="Logout status message", min_length=1, max_length=200)

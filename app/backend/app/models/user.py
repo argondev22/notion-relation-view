@@ -23,9 +23,7 @@ class User(Base):
     picture = Column(String, nullable=True)
     plan = Column(String(10), default="free", nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
-    updated_at = Column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
-    )
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
 
     # Relationships
     notion_token = relationship(
