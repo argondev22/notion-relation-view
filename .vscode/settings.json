@@ -1,13 +1,18 @@
 {
+  // General editor settings
   "editor.formatOnSave": true,
   "editor.insertSpaces": true,
-  "editor.tabSize": 2,
-  "files.eol": "\n",
-  "files.insertFinalNewline": true,
-  "files.trimTrailingWhitespace": true,
+  "editor.tabSize": 4,
   "editor.detectIndentation": false,
   "editor.wordWrap": "off",
   "editor.defaultFormatter": "esbenp.prettier-vscode",
+
+  // File settings
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+
+  // Language-specific formatters
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
@@ -23,8 +28,23 @@
   "[yml]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+
+  // Python settings (Ruff + mypy)
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit",
+      "source.fixAll": "explicit"
+    }
+  },
+
+  // JSON settings
   "json.validate.enable": true,
   "json.format.enable": true,
   "json.schemaDownload.enable": true,
-  "kiroAgent.configureMCP": "Disabled"
+
+  // Other settings
+  "kiroAgent.configureMCP": "Enabled",
+  "typescript.autoClosingTags": false
 }
