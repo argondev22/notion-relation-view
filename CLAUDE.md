@@ -31,6 +31,8 @@ All project specifications are managed under `.kiro/`. Read these documents befo
 ## Key Rules
 
 - **Docker-first**: All development commands, tests, and builds run inside Docker containers. Use Makefile commands or `docker compose exec`.
-- **English only**: Source code, comments, docstrings, commit messages, PR descriptions, and technical documentation must be in English.
+- **English only (code)**: Source code, comments, docstrings, and commit messages must be in English.
+- **Japanese OK (docs)**: Documentation under `docs/` and PR descriptions may be written in Japanese.
 - **Conventional Commits**: `feat:`, `fix:`, `docs:`, `style:`, `refactor:`, `test:`, `chore:`, `ci:`, `perf:`, `build:`
 - **Check tasks.md before working**: Refer to the relevant `tasks.md` to understand current progress and pick up the next pending task.
+- **Development process**: When updating practices or knowledge about the development process, update `docs/development-process.md`.
